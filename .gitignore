@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Antiscale cache (plan: content cache lives under project)
+.antiscale/
+
+# Tests & coverage
+coverage/
+
+# Logs & debug
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment (secrets / local overrides)
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
