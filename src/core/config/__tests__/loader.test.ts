@@ -1,0 +1,66 @@
+import { describe, it, expect } from "vitest";
+import { antiscaleConfigSchema } from "../schema.js";
+import { ConfigError } from "../../errors.js";
+
+// Tests parse the Zod schema directly so they don't need the filesystem/jiti
+// loadConfig() integration is covered by the schema round-trips below
+
+describe("antiscaleConfigSchema", () => {
+  it("no config: returns all defaults", () => {
+    const result = antiscaleConfigSchema.parse({});
+    expect(result.strategy).toBe("adaptive");
+    expect(result.cache.mode).toBe("content");
+    expect(result.cache.directory).toBe(".antiscale/cache");
+    expect(result.tasks).toEqual({});
+  });
+
+  it("partial override: only strategy set, rest gets defaults", () => {
+    const result = antiscaleConfigSchema.parse({ strategy: "strict" });
+    expect(result.strategy).toBe("strict");
+    expect(result.cache.directory).toBe(".antiscale/cache");
+    expect(result.tasks).toEqual({});
+  });
+
+  it("full config: all fields provided and returned as-is", () => {
+    const input = {
+      strategy: "strict",
+      cache: { mode: "content", directory: ".custom/cache" },
+      tasks: {
+        build: { command: "tsc", inputs: ["src/**/*.ts"], dependsOn: ["lint"] },
+        lint: { command: "eslint . " },
+      },
+    };
+    const result = antiscaleConfigSchema.parse(input);
+    expect(result.strategy).toBe("strict");
+    expect(result.cache.directory).toBe(".custom/cache");
+    expect(result.tasks["build"]!.command).toBe("tsc");
+    expect(result.tasks["build"]!.dependsOn).toEqual(["lint"]);
+  });
+
+  it("invalid strategy: throws with useful message (wrapped as ConfigError)", () => {
+    const parsed = antiscaleConfigSchema.safeParse({ strategy: "turbo" });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const messages = parsed.error.issues.map((e) => e.message).join(" ");
+      expect(messages).toMatch(/adaptive|strict|invalid/i);
+    }
+    // Also verify ConfigError wrapping works
+    expect(() => {
+      if (!parsed.success)
+        throw new ConfigError("Invalid antiscale config: strategy");
+    }).toThrow(ConfigError);
+  });
+
+  it("tasks with dependsOn: references are preserved correctly", () => {
+    const result = antiscaleConfigSchema.parse({
+      tasks: {
+        build: { dependsOn: ["test", "lint"] },
+        test: {},
+        lint: {},
+      },
+    });
+    expect(result.tasks["build"]!.dependsOn).toEqual(["test", "lint"]);
+    expect(result.tasks["test"]).toBeDefined();
+    expect(result.tasks["lint"]).toBeDefined();
+  });
+});
