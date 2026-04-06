@@ -1,5 +1,8 @@
-import type { TaskConfig, ResolvedAntiscaleConfig } from "../../types/index.js";
-import { TaskGraph } from "../graph/dag.js";
+import type {
+  TaskConfig,
+  ResolvedAntiscaleConfig,
+  TaskGraph,
+} from "../../types/index.js";
 import { readCache, writeCache } from "../cache/store.js";
 import { hashTaskInputs } from "../cache/hashing.js";
 import { executeTask, type TaskExecutor } from "./executor.js";
