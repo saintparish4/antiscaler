@@ -1,25 +1,61 @@
+#!/usr/bin/env node
 import { Command } from "commander";
 import { AntiscaleError } from "../core/errors.js";
-import { registerBuildCommand } from "./commands/build.js";
-import { registerDevCommand } from "./commands/dev.js";
-import { registerRunCommand } from "./commands/run.js";
-import { registerInitCommand } from "./commands/init.js";
-import { registerInsightCommand } from "./commands/insight.js";
-import { registerEnvCommand } from "./commands/env.js";
-import { registerCheckCommand } from "./commands/check.js";
 
 const program = new Command()
   .name("antiscale")
   .description("Adaptive dev orchestration CLI")
   .version("0.1.0");
 
-registerBuildCommand(program);
-registerDevCommand(program);
-registerRunCommand(program);
-registerInitCommand(program);
-registerInsightCommand(program);
-registerEnvCommand(program);
-registerCheckCommand(program);
+program
+  .command("build")
+  .description("Run the build task")
+  .action(async () => {
+    const { registerDevAction } = await import("./commands/dev.js");
+    await registerDevAction();
+  });
+
+program
+  .command("run <task>")
+  .description("Run a named task")
+  .action(async (taskName: string) => {
+    const { registerRunAction } = await import("./commands/run.js");
+    await registerRunAction(taskName);
+  });
+
+program
+  .command("init")
+  .description("Scaffold antiscale.config.ts in the current directory")
+  .action(async () => {
+    const { registerInitAction } = await import("./commands/init.js");
+    await registerInitAction();
+  });
+
+program
+  .command("insight")
+  .description("Show task timing and cache hit stats")
+  .action(async () => {
+    const { registerInsightAction } = await import("./commands/insight.js");
+    await registerInsightAction();
+  });
+
+program
+  .command("env")
+  .description(
+    "Show detected environment (runtime, package manager, framework)",
+  )
+  .action(async () => {
+    const { registerEnvAction } = await import("./commands/env.js");
+    await registerEnvAction();
+  });
+
+program
+  .command("check")
+  .description("Validate config and task graph (no execution)")
+  .action(async () => {
+    const { registerCheckAction } = await import("./commands/check.js");
+    await registerCheckAction();
+  });
 
 program.parseAsync(process.argv).catch((err: unknown) => {
   if (err instanceof AntiscaleError) {

@@ -1,15 +1,32 @@
 {
-  "name": "antiscaler",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "vitest"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "name": "antiscale",
+  "version": "0.1.0",
+  "description": "Adaptive dev orchestration CLI — task DAG, content caching, runtime detection",
   "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "antiscale": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/cli/index.ts --format esm --dts",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit && vitest run"
+  },
+  "keywords": [
+    "cli",
+    "build",
+    "orchestration",
+    "task-runner",
+    "caching",
+    "dag"
+  ],
+  "author": "Bluesky Labs",
+  "license": "MIT",
   "devDependencies": {
     "tsdown": "^0.21.4",
     "typescript": "^5.9.3",
