@@ -5,17 +5,20 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "antiscaler": "./dist/index.js"
+    "antiscaler": "dist/index.js"
   },
   "files": [
     "dist"
   ],
   "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prebuild": "npm run clean",
     "build": "tsup src/cli/index.ts --format esm --dts",
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit && vitest run"
+    "lint": "tsc --noEmit && vitest run",
+    "prepublishOnly": "npm run lint && npm run build"
   },
   "keywords": [
     "cli",
