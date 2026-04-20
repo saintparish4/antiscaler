@@ -1,19 +1,28 @@
 {
   "name": "antiscaler",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Adaptive dev orchestration CLI — task DAG, content caching, runtime detection",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "antiscaler": "dist/index.js"
+    "antiscaler": "dist/cli.js"
   },
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "prebuild": "npm run clean",
-    "build": "tsup src/cli/index.ts --format esm --dts",
+    "build": "tsup",
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",

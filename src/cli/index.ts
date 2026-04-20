@@ -5,7 +5,7 @@ import { AntiscaleError } from "../core/errors.js";
 const program = new Command()
   .name("antiscaler")
   .description("Adaptive dev orchestration CLI")
-  .version("0.1.0");
+  .version("0.1.1");
 
 program
   .command("build")

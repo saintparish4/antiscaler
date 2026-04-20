@@ -1,7 +1,7 @@
 import path from "path";
 import { existsSync, writeFileSync } from "fs";
 
-const TEMPLATE = `import { defineConfig } from "antiscale";
+const TEMPLATE = `import { defineConfig } from "antiscaler";
 
 export default defineConfig({
   strategy: "adaptive",
