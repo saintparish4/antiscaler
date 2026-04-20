@@ -1,0 +1,29 @@
+PROMPT: Measure-Command { node dist/index.js --help } PowerShell
+
+# Before phase-8 fixes (tsup/tsx/@types/node in dependencies, stale dist):
+Milliseconds      : 706
+TotalMilliseconds : 706.2186
+
+# After phase-8 fixes (lazy imports, dev tooling moved to devDependencies, fresh build):
+Milliseconds      : 172
+TotalMilliseconds : 172.962
+
+# After rename to `antiscaler` (fresh build, identical architecture):
+TotalMilliseconds : 193.938
+
+Baseline for 0.1.0 release: ~170-195ms (cold-cache jitter of ~20ms is normal).
+Plan's original aspirational target was <100ms; current numbers are well
+under the "feels instant" threshold (~200ms) for a CLI and are accepted
+as the shipping baseline. Revisit if startup regresses above 250ms.
+
+tsup output confirms the lazy-import architecture:
+  dist/index.js  1.89 KB   (entry — only commander + error class)
+  dist/build-*.js   907 B  (one chunk per command, loaded on demand)
+  dist/dev-*.js     587 B
+  dist/run-*.js     907 B
+  dist/init-*.js    664 B
+  dist/env-*.js     515 B
+  dist/insight-*.js 682 B
+  dist/check-*.js   861 B
+Heavy deps (execa, jiti, fast-glob) are pulled in only by the command
+chunks that actually need them.

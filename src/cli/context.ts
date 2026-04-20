@@ -1,7 +1,7 @@
 import type { AntiscaleContext } from "../types/index.js";
 import { loadConfig } from "../core/config/loader.js";
 import { detectProject } from "../core/detection/project.js";
-import { buildGraph } from "../core/graph/plannet.js";
+import { buildGraph } from "../core/graph/planner.js";
 
 export async function createContext(
   cwd: string = process.cwd(),

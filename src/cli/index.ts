@@ -3,13 +3,21 @@ import { Command } from "commander";
 import { AntiscaleError } from "../core/errors.js";
 
 const program = new Command()
-  .name("antiscale")
+  .name("antiscaler")
   .description("Adaptive dev orchestration CLI")
   .version("0.1.0");
 
 program
   .command("build")
   .description("Run the build task")
+  .action(async () => {
+    const { registerBuildAction } = await import("./commands/build.js");
+    await registerBuildAction();
+  });
+
+program
+  .command("dev")
+  .description("Start the dev server")
   .action(async () => {
     const { registerDevAction } = await import("./commands/dev.js");
     await registerDevAction();

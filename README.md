@@ -1,15 +1,15 @@
-# Antiscale
+# Antiscaler
 
 Adaptive dev orchestration CLI that understands your project, builds a task
 dependency graph, and executes only what's necessary using content-based
-caching and runtime detection. Instead of locking you into one stack, Antiscale
+caching and runtime detection. Instead of locking you into one stack, Antiscaler
 sits on top of whatever you already use and optimizes your dev loop.
 
 ## Features
 
 - **Auto-detection** — Detects your package manager (npm / yarn / pnpm),
   runtime (Node / Bun / Deno), and framework (Next.js / Vite / generic).
-- **Task DAG** — Declare `dependsOn` between tasks; Antiscale resolves the
+- **Task DAG** — Declare `dependsOn` between tasks; Antiscaler resolves the
   dependency graph and runs each level in parallel.
 - **Content hashing** — SHA-256 hashes of input globs; unchanged inputs
   produce a cache hit and skip execution entirely.
@@ -22,19 +22,19 @@ sits on top of whatever you already use and optimizes your dev loop.
 
 ```bash
 # Install
-npm install -D antiscale
+npm install -D antiscaler
 
 # Scaffold a config file
-npx antiscale init
+npx antiscaler init
 
 # Run your build
-npx antiscale build
+npx antiscaler build
 
 # Re-run — cached tasks are skipped
-npx antiscale build
+npx antiscaler build
 
 # See timing and cache stats
-npx antiscale insight
+npx antiscaler insight
 ```
 
 ## Configuration
@@ -42,7 +42,7 @@ npx antiscale insight
 Create `antiscale.config.ts` in your project root (or `.js` / `.mjs`):
 
 ```typescript
-import { defineConfig } from "antiscale";
+import { defineConfig } from "antiscaler";
 
 export default defineConfig({
   strategy: "adaptive",       // "adaptive" (cache-aware) | "strict" (always run)
@@ -80,10 +80,14 @@ export default defineConfig({
 | `tasks.*.inputs`   | `string[]`                  | `[]`                  | Glob patterns for cache hashing      |
 | `tasks.*.dependsOn`| `string[]`                  | `[]`                  | Tasks that must run first            |
 
+> Note: the config filename (`antiscale.config.ts`) and cache directory
+> (`.antiscale/cache`) are internal conventions and intentionally retain the
+> shorter `antiscale` name for brevity on disk.
+
 ## CLI Reference
 
 ```
-antiscale <command> [options]
+antiscaler <command> [options]
 
 Commands:
   build          Run the build task through the DAG

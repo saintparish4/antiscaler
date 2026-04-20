@@ -1,0 +1,47 @@
+=== Antiscale 0.1.0 Smoke Test ===
+Date: 2026-04-19T21:46:58.9651624-04:00
+CLI:  C:\Users\shari\OrdinalScale\antiscaler\dist\index.js
+Dir:  C:\Users\shari\AppData\Local\Temp\antiscale-smoke-1176266683
+
+--- Config file ---
+export default {
+  strategy: "adaptive",
+  tasks: {
+    build: {
+      command: "node --version",
+      inputs: ["package.json"],
+    },
+  },
+};
+
+--- [1] First build (expect MISS + node version) ---
+v24.13.0
+
+TASK  DURATION   STATUS
+-----------------------
+build 78ms       MISS
+
+Total: 78ms  Cache hit rate: 0%
+
+--- [2] Second build (expect HIT, no node version printed) ---
+
+TASK  DURATION   STATUS
+-----------------------
+build -          HIT
+
+Total: 0ms  Cache hit rate: 100%
+
+--- [3] antiscale insight ---
+
+Cached task history:
+  build                last run: 4/19/2026, 9:47:01 PM  duration: 78ms
+
+--- [4] antiscale env ---
+Package Manager : npm
+Runtime         : node (fallback: node)
+Framework       : none detected
+
+--- [5] antiscale check ---
+Config and graph are valid.
+
+=== Smoke test complete ===

@@ -1,10 +1,10 @@
-# Contributing to Antiscale
+# Contributing to Antiscaler
 
 ## Dev Setup
 
 ```bash
 git clone <repo-url>
-cd antiscale
+cd antiscaler
 npm install
 
 # Run tests
@@ -36,7 +36,7 @@ src/
 │   │
 │   ├── graph/
 │   │   ├── dag.ts        # TaskGraph class — addTask, addDependency, toLevels
-│   │   └── plannet.ts    # buildGraph() — config -> TaskGraph
+│   │   └── planner.ts    # buildGraph() — config -> TaskGraph
 │   │
 │   ├── cache/
 │   │   ├── hashing.ts    # SHA-256 content hashing via fast-glob + crypto
