@@ -1,3 +1,4 @@
+import os from "node:os";
 import type {
   TaskConfig,
   ResolvedAntiscaleConfig,
@@ -13,12 +14,42 @@ export interface RunOptions {
   pm: string;
   config: ResolvedAntiscaleConfig;
   tasks: Record<string, TaskConfig>;
+  /** Max tasks to run concurrently inside a single DAG level */
+  concurrency?: number;
 }
 
 export interface TaskRunResult {
   task: string;
   durationMs: number;
   cacheHit: boolean;
+}
+
+export function defaultConcurrency(): number {
+  return Math.max(1, os.cpus().length - 1);
+}
+
+/**
+ * Runs `fn` over `items` with at most `limit` in flight at once.
+ * Preserves input order in the result array. Tiny on purpose — we don't
+ * need cancellation, priorities, or backpressure for a build runner.
+ */
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i] as T, i);
+    }
+  };
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return results;
 }
 
 export async function runTasksWithDeps(
@@ -30,15 +61,18 @@ export async function runTasksWithDeps(
   const levels = graph.toLevels(target);
   const cache = readCache(options.cacheDir);
   const results: TaskRunResult[] = [];
+  const concurrency = options.concurrency ?? defaultConcurrency();
 
   // Safety net: write cache even on unexpected exit
-  const flushCache = () => writeCache(options.cacheDir, cache);
+  const flushCache = (): void => writeCache(options.cacheDir, cache);
   process.on("exit", flushCache);
 
   try {
     for (const level of levels) {
-      const levelResults = await Promise.all(
-        level.map(async (taskName): Promise<TaskRunResult> => {
+      const levelResults = await mapLimit(
+        level,
+        concurrency,
+        async (taskName): Promise<TaskRunResult> => {
           const taskCfg = options.tasks[taskName] ?? {};
           const patterns = taskCfg.inputs ?? [];
           const isStrict = options.config.strategy === "strict";
@@ -64,13 +98,19 @@ export async function runTasksWithDeps(
             return { task: taskName, durationMs, cacheHit: false };
           }
 
-          // No inputs or strict mode: always execute
+          // Strict mode or no-inputs task: always execute, but still record
+          // run metadata so `insight` shows history for these tasks.
           const start = Date.now();
           await executor(taskName, taskCfg, options.pm, options.cwd);
           const durationMs = Date.now() - start;
 
+          cache.tasks[taskName] = {
+            lastRun: Date.now(),
+            lastDurationMs: durationMs,
+          };
+
           return { task: taskName, durationMs, cacheHit: false };
-        }),
+        },
       );
 
       results.push(...levelResults);

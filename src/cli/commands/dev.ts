@@ -1,6 +1,10 @@
-import type { Command } from "commander";
+export interface DevActionOptions {
+  concurrency?: number;
+}
 
-export async function registerDevAction(): Promise<void> {
+export async function registerDevAction(
+  opts: DevActionOptions = {},
+): Promise<void> {
   const { createContext } = await import("../context.js");
   const { runTasksWithDeps } = await import("../../core/execution/runner.js");
 
@@ -11,12 +15,6 @@ export async function registerDevAction(): Promise<void> {
     pm: ctx.pm,
     config: ctx.config,
     tasks: ctx.config.tasks,
+    ...(opts.concurrency !== undefined ? { concurrency: opts.concurrency } : {}),
   });
-}
-
-export function registerDevCommand(program: Command): void {
-  program
-    .command("dev")
-    .description("Start the dev server")
-    .action(registerDevAction);
 }

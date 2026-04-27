@@ -3,7 +3,8 @@ import path from "path";
 import { CacheError } from "../errors.js";
 
 export interface TaskCacheEntry {
-  hash: string;
+  /** Absent when the run had no inputs or used strict strategy. */
+  hash?: string;
   lastRun: number;
   lastDurationMs?: number;
 }

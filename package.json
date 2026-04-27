@@ -1,6 +1,6 @@
 {
   "name": "antiscaler",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Adaptive dev orchestration CLI — task DAG, content caching, runtime detection",
   "type": "module",
   "main": "dist/index.js",
@@ -45,6 +45,7 @@
     "fast-glob": "^3.3.3",
     "jiti": "^2.6.1",
     "picocolors": "^1.1.1",
+    "string-argv": "^0.3.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -1,5 +1,3 @@
-import type { Command } from "commander";
-
 export async function registerCheckAction(): Promise<void> {
   const { createContext } = await import("../context.js");
   const { ConfigError } = await import("../../core/errors.js");
@@ -21,11 +19,4 @@ export async function registerCheckAction(): Promise<void> {
   }
 
   console.log("Config and graph are valid.");
-}
-
-export function registerCheckCommand(program: Command): void {
-  program
-    .command("check")
-    .description("Validate config and task graph (no execution)")
-    .action(registerCheckAction);
 }

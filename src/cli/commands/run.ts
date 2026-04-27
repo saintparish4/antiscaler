@@ -1,6 +1,11 @@
-import type { Command } from "commander";
+export interface RunActionOptions {
+  concurrency?: number;
+}
 
-export async function registerRunAction(taskName: string): Promise<void> {
+export async function registerRunAction(
+  taskName: string,
+  opts: RunActionOptions = {},
+): Promise<void> {
   const { createContext } = await import("../context.js");
   const { runTasksWithDeps } = await import("../../core/execution/runner.js");
   const { readCache } = await import("../../core/cache/store.js");
@@ -14,14 +19,8 @@ export async function registerRunAction(taskName: string): Promise<void> {
     pm: ctx.pm,
     config: ctx.config,
     tasks: ctx.config.tasks,
+    ...(opts.concurrency !== undefined ? { concurrency: opts.concurrency } : {}),
   });
   const cache = readCache(ctx.cacheDir);
   printInsights(computeInsights(results, cache));
-}
-
-export function registerRunCommand(program: Command): void {
-  program
-    .command("run <task>")
-    .description("Run a named task")
-    .action(registerRunAction);
 }

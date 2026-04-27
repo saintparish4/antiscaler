@@ -1,4 +1,4 @@
-import { CycleError } from "../errors.js";
+import { ConfigError, CycleError } from "../errors.js";
 
 export class TaskGraph {
     private tasks =new Set<string>(); 
@@ -19,7 +19,7 @@ export class TaskGraph {
 
     toLevels(target: string): string[][] {
         if (!this.tasks.has(target)) {
-            throw new Error(`Task ${target} not found in graph`); 
+            throw new ConfigError(`Task "${target}" not found in graph`);
         }
 
         // 1. Collect subgraph reachable from target (BFS/DFS over dependsOn) 

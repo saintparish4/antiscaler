@@ -11,9 +11,10 @@ export type TaskExecutor = (
 export const executeTask: TaskExecutor = async (name, cfg, pm, cwd) => {
   // Lazy import — keeps startup fast (antiscale --help stays < 100ms)
   const { execa } = await import("execa");
+  const { default: stringArgv } = await import("string-argv");
 
   const command = cfg.command ?? `${pm} run ${name}`;
-  const [cmd, ...args] = command.split(" ");
+  const [cmd, ...args] = stringArgv(command);
 
   if (!cmd) {
     throw new TaskExecutionError(name, 1, `Empty command for task "${name}"`);

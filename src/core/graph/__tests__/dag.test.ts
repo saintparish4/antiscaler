@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TaskGraph } from "../dag.js";
-import { CycleError } from "../../errors.js";
+import { ConfigError, CycleError } from "../../errors.js";
 
 // Helper: build a graph from an adjaceny lsit { task: [deps] }
 function makeGraph(edges: Record<string, string[]>): TaskGraph {
@@ -37,8 +37,9 @@ describe("TaskGraph.toLevels", () => {
     expect(g.toLevels("A")).toEqual([["A"]]);
   });
 
-  it("missing target throws an error", () => {
+  it("missing target throws ConfigError", () => {
     const g = makeGraph({ A: [] });
+    expect(() => g.toLevels("NOPE")).toThrow(ConfigError);
     expect(() => g.toLevels("NOPE")).toThrow(/not found/);
   });
 

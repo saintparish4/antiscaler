@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a new feature or enhancement.
+title: "[feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: pain
+    attributes:
+      label: What pain are you in?
+      description: |
+        Describe the workflow that doesn't work today. We prioritize features
+        that solve concrete pain over "would be nice to have."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you want antiscaler to behave?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: |
+        Other tools, workarounds, or designs you thought about and why they
+        don't fit. (Optional, but useful.)
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope sketch
+      description: |
+        Roughly, how big do you think this is? CLI flag? New command? New
+        config field? Architectural change? Be honest — small features ship
+        faster.

@@ -38,3 +38,9 @@ export class CacheError extends AntiscaleError {
     super("CACHE_ERROR", message);
   }
 }
+
+export class CliUsageError extends AntiscaleError {
+  constructor(message: string) {
+    super("CLI_USAGE", message);
+  }
+}

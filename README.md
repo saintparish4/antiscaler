@@ -1,5 +1,8 @@
 # Antiscaler
 
+[![npm version](https://img.shields.io/npm/v/antiscaler.svg)](https://www.npmjs.com/package/antiscaler)
+[![CI](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml)
+
 Adaptive dev orchestration CLI that understands your project, builds a task
 dependency graph, and executes only what's necessary using content-based
 caching and runtime detection. Instead of locking you into one stack, Antiscaler
@@ -99,8 +102,10 @@ Commands:
   check          Validate config and DAG (no execution)
 
 Options:
-  -V, --version  Show version
-  -h, --help     Show help
+      -V, --version       Show version
+      -h, --help          Show help
+      -c, --concurrency   Max tasks per DAG level (default: cpus - 1)
+                          Available on `build`, `dev`, and `run`.
 ```
 
 ## How It Works

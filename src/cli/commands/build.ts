@@ -1,6 +1,10 @@
-import type { Command } from "commander";
+export interface BuildActionOptions {
+  concurrency?: number;
+}
 
-export async function registerBuildAction(): Promise<void> {
+export async function registerBuildAction(
+  opts: BuildActionOptions = {},
+): Promise<void> {
   const { createContext } = await import("../context.js");
   const { runTasksWithDeps } = await import("../../core/execution/runner.js");
   const { readCache } = await import("../../core/cache/store.js");
@@ -14,15 +18,8 @@ export async function registerBuildAction(): Promise<void> {
     pm: ctx.pm,
     config: ctx.config,
     tasks: ctx.config.tasks,
+    ...(opts.concurrency !== undefined ? { concurrency: opts.concurrency } : {}),
   });
   const cache = readCache(ctx.cacheDir);
   printInsights(computeInsights(results, cache));
-}
-
-// Legacy registration kept for backward compat; not used by lazy index.ts
-export function registerBuildCommand(program: Command): void {
-  program
-    .command("build")
-    .description("Run the build task")
-    .action(registerBuildAction);
 }

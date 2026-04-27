@@ -3,8 +3,9 @@ import { mkdtempSync, writeFileSync, mkdirSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import { runTasksWithDeps, type TaskRunResult } from "../runner.js";
+import type { TaskExecutor } from "../executor.js";
 import { TaskGraph } from "../../graph/dag.js";
-import { writeCache } from "../../cache/store.js";
+import { readCache, writeCache } from "../../cache/store.js";
 import { hashTaskInputs } from "../../cache/hashing.js";
 import { TaskExecutionError } from "../../errors.js";
 import type { ResolvedAntiscaleConfig } from "../../../types/index.js";
@@ -23,9 +24,7 @@ function makeConfig(
   };
 }
 
-function makeGraph(
-  tasks: Array<{ name: string; deps?: string[] }>,
-): TaskGraph {
+function makeGraph(tasks: Array<{ name: string; deps?: string[] }>): TaskGraph {
   const graph = new TaskGraph();
   for (const { name, deps } of tasks) {
     graph.addTask(name);
@@ -66,13 +65,18 @@ describe("runTasksWithDeps", () => {
     const graph = makeGraph([{ name: "build" }]);
     const executor = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
-    const results: TaskRunResult[] = await runTasksWithDeps("build", graph, {
-      cwd,
-      cacheDir,
-      pm: "npm",
-      config,
-      tasks: config.tasks,
-    }, executor);
+    const results: TaskRunResult[] = await runTasksWithDeps(
+      "build",
+      graph,
+      {
+        cwd,
+        cacheDir,
+        pm: "npm",
+        config,
+        tasks: config.tasks,
+      },
+      executor,
+    );
 
     expect(executor).not.toHaveBeenCalled();
     expect(results).toHaveLength(1);
@@ -96,13 +100,18 @@ describe("runTasksWithDeps", () => {
     const graph = makeGraph([{ name: "build" }]);
     const executor = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
-    const results: TaskRunResult[] = await runTasksWithDeps("build", graph, {
-      cwd,
-      cacheDir,
-      pm: "npm",
-      config,
-      tasks: config.tasks,
-    }, executor);
+    const results: TaskRunResult[] = await runTasksWithDeps(
+      "build",
+      graph,
+      {
+        cwd,
+        cacheDir,
+        pm: "npm",
+        config,
+        tasks: config.tasks,
+      },
+      executor,
+    );
 
     expect(executor).toHaveBeenCalledOnce();
     expect(results[0]?.cacheHit).toBe(false);
@@ -134,13 +143,18 @@ describe("runTasksWithDeps", () => {
       { name: "build", deps: ["lint", "test"] },
     ]);
 
-    const results: TaskRunResult[] = await runTasksWithDeps("build", graph, {
-      cwd,
-      cacheDir,
-      pm: "npm",
-      config,
-      tasks: config.tasks,
-    }, executor as TaskExecutor);
+    const results: TaskRunResult[] = await runTasksWithDeps(
+      "build",
+      graph,
+      {
+        cwd,
+        cacheDir,
+        pm: "npm",
+        config,
+        tasks: config.tasks,
+      },
+      executor as TaskExecutor,
+    );
 
     // Both lint and test should have started before either finishes
     const lintStart = callOrder.indexOf("start:lint");
@@ -151,7 +165,9 @@ describe("runTasksWithDeps", () => {
     expect(lintStart).not.toBe(-1);
     expect(testStart).not.toBe(-1);
     // In concurrent execution, both start before the first end
-    expect(Math.min(lintEnd, testEnd)).toBeGreaterThan(Math.max(lintStart, testStart));
+    expect(Math.min(lintEnd, testEnd)).toBeGreaterThan(
+      Math.max(lintStart, testStart),
+    );
     expect(results).toHaveLength(3);
   });
 
@@ -167,13 +183,18 @@ describe("runTasksWithDeps", () => {
       .mockRejectedValue(new TaskExecutionError("build", 1));
 
     await expect(
-      runTasksWithDeps("build", graph, {
-        cwd,
-        cacheDir,
-        pm: "npm",
-        config,
-        tasks: config.tasks,
-      }, executor),
+      runTasksWithDeps(
+        "build",
+        graph,
+        {
+          cwd,
+          cacheDir,
+          pm: "npm",
+          config,
+          tasks: config.tasks,
+        },
+        executor,
+      ),
     ).rejects.toBeInstanceOf(TaskExecutionError);
   });
 
@@ -196,18 +217,99 @@ describe("runTasksWithDeps", () => {
     const graph = makeGraph([{ name: "build" }]);
     const executor = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
-    const results: TaskRunResult[] = await runTasksWithDeps("build", graph, {
-      cwd,
-      cacheDir,
-      pm: "npm",
-      config,
-      tasks: config.tasks,
-    }, executor);
+    const results: TaskRunResult[] = await runTasksWithDeps(
+      "build",
+      graph,
+      {
+        cwd,
+        cacheDir,
+        pm: "npm",
+        config,
+        tasks: config.tasks,
+      },
+      executor,
+    );
 
     expect(executor).toHaveBeenCalledOnce();
     expect(results[0]?.cacheHit).toBe(false);
   });
-});
 
-// Re-export type so the mock cast works cleanly
-import type { TaskExecutor } from "../executor.js";
+  // ── 6. Strict mode records cache ─────────────────────────────────────────
+  it("records lastRun/lastDurationMs in strict mode (no hash)", async () => {
+    mkdirSync(cacheDir, { recursive: true });
+
+    const config: ResolvedAntiscaleConfig = {
+      ...makeConfig("strict"),
+      tasks: { build: {} },
+    };
+    const graph = makeGraph([{ name: "build" }]);
+    const executor = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+
+    await runTasksWithDeps(
+      "build",
+      graph,
+      {
+        cwd,
+        cacheDir,
+        pm: "npm",
+        config,
+        tasks: config.tasks,
+      },
+      executor,
+    );
+
+    const cache = readCache(cacheDir);
+    expect(cache.tasks["build"]).toBeDefined();
+    expect(cache.tasks["build"]?.hash).toBeUndefined();
+    expect(typeof cache.tasks["build"]?.lastRun).toBe("number");
+    expect(typeof cache.tasks["build"]?.lastDurationMs).toBe("number");
+  });
+
+  // ── 7. Concurrency ceiling ───────────────────────────────────────────────
+  it("respects options.concurrency inside a level", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const executor = vi
+      .fn<(name: string) => Promise<void>>()
+      .mockImplementation(async () => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await new Promise<void>((res) => setTimeout(res, 10));
+        inFlight--;
+      });
+
+    // 5 sibling leaves + a build target that depends on all of them.
+    // graph.toLevels("build") -> [[a, b, c, d, e], [build]], so the first
+    // level has 5 items and exercises the limit < items.length branch
+    // of mapLimit. Without a real cap, peak would reach 5.
+    const leaves = ["a", "b", "c", "d", "e"];
+    const config: ResolvedAntiscaleConfig = {
+      ...makeConfig("adaptive"),
+      tasks: {
+        ...Object.fromEntries(leaves.map((n) => [n, {}])),
+        build: { dependsOn: leaves },
+      },
+    };
+    const graph = makeGraph([
+      ...leaves.map((name) => ({ name })),
+      { name: "build", deps: leaves },
+    ]);
+
+    await runTasksWithDeps(
+      "build",
+      graph,
+      {
+        cwd,
+        cacheDir,
+        pm: "npm",
+        config,
+        tasks: config.tasks,
+        concurrency: 2,
+      },
+      executor as TaskExecutor,
+    );
+
+    expect(peak).toBeLessThanOrEqual(2);
+    expect(executor).toHaveBeenCalledTimes(leaves.length + 1);
+  });
+});

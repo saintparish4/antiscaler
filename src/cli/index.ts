@@ -1,34 +1,67 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { AntiscaleError } from "../core/errors.js";
+import { AntiscaleError, CliUsageError } from "../core/errors.js";
+
+interface ConcurrencyOpts {
+  concurrency?: string;
+}
+
+function parseConcurrency(opts: ConcurrencyOpts): number | undefined {
+  if (opts.concurrency === undefined) return undefined;
+  const n = Number.parseInt(opts.concurrency, 10);
+  if (!Number.isFinite(n) || n < 1) {
+    throw new CliUsageError(
+      `--concurrency must be a positive integer, got "${opts.concurrency}"`,
+    );
+  }
+  return n;
+}
 
 const program = new Command()
   .name("antiscaler")
   .description("Adaptive dev orchestration CLI")
-  .version("0.1.1");
+  .version("0.1.2");
 
 program
   .command("build")
   .description("Run the build task")
-  .action(async () => {
+  .option(
+    "-c, --concurrency <n>",
+    "max tasks to run concurrently per DAG level",
+  )
+  .action(async (opts: ConcurrencyOpts) => {
     const { registerBuildAction } = await import("./commands/build.js");
-    await registerBuildAction();
+    const concurrency = parseConcurrency(opts);
+    await registerBuildAction(concurrency !== undefined ? { concurrency } : {});
   });
 
 program
   .command("dev")
   .description("Start the dev server")
-  .action(async () => {
+  .option(
+    "-c, --concurrency <n>",
+    "max tasks to run concurrently per DAG level",
+  )
+  .action(async (opts: ConcurrencyOpts) => {
     const { registerDevAction } = await import("./commands/dev.js");
-    await registerDevAction();
+    const concurrency = parseConcurrency(opts);
+    await registerDevAction(concurrency !== undefined ? { concurrency } : {});
   });
 
 program
   .command("run <task>")
   .description("Run a named task")
-  .action(async (taskName: string) => {
+  .option(
+    "-c, --concurrency <n>",
+    "max tasks to run concurrently per DAG level",
+  )
+  .action(async (taskName: string, opts: ConcurrencyOpts) => {
     const { registerRunAction } = await import("./commands/run.js");
-    await registerRunAction(taskName);
+    const concurrency = parseConcurrency(opts);
+    await registerRunAction(
+      taskName,
+      concurrency !== undefined ? { concurrency } : {},
+    );
   });
 
 program
