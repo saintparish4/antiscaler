@@ -5,6 +5,6 @@ export async function registerInsightAction(): Promise<void> {
   const { printInsights } = await import("../../core/insight/reporter.js");
 
   const ctx = await createContext();
-  const cache = readCache(ctx.cacheDir);
+  const cache = await readCache(ctx.cacheDir);
   printInsights(computeInsights([], cache));
 }
