@@ -20,7 +20,7 @@ function parseConcurrency(opts: ConcurrencyOpts): number | undefined {
 const program = new Command()
   .name("antiscaler")
   .description("Adaptive dev orchestration CLI")
-  .version("0.1.2");
+  .version("0.1.3");
 
 program
   .command("build")
