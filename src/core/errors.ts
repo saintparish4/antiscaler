@@ -2,15 +2,16 @@ export class AntiscaleError extends Error {
   constructor(
     public code: string,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "AntiscaleError";
   }
 }
 
 export class ConfigError extends AntiscaleError {
-  constructor(message: string) {
-    super("CONFIG_ERROR", message);
+  constructor(message: string, options?: ErrorOptions) {
+    super("CONFIG_ERROR", message, options);
   }
 }
 
@@ -25,17 +26,19 @@ export class TaskExecutionError extends AntiscaleError {
     public task: string,
     public exitCode: number,
     message?: string,
+    options?: ErrorOptions,
   ) {
     super(
       "TASK_EXECUTION_ERROR",
       message ?? `Task "${task}" failed with exit code ${exitCode}`,
+      options,
     );
   }
 }
 
 export class CacheError extends AntiscaleError {
-  constructor(message: string) {
-    super("CACHE_ERROR", message);
+  constructor(message: string, options?: ErrorOptions) {
+    super("CACHE_ERROR", message, options);
   }
 }
 

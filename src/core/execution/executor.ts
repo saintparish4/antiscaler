@@ -9,8 +9,8 @@ export type TaskExecutor = (
 ) => Promise<void>;
 
 export const executeTask: TaskExecutor = async (name, cfg, pm, cwd) => {
-  // Lazy import — keeps startup fast (antiscale --help stays < 100ms)
-  const { execa } = await import("execa");
+  // Lazy imports keep startup fast (`antiscaler --help` stays < 100ms).
+  const { execa, ExecaError } = await import("execa");
   const { default: stringArgv } = await import("string-argv");
 
   const command = cfg.command ?? `${pm} run ${name}`;
@@ -23,13 +23,20 @@ export const executeTask: TaskExecutor = async (name, cfg, pm, cwd) => {
   try {
     await execa(cmd, args, { cwd, stdio: "inherit" });
   } catch (err: unknown) {
-    const exitCode =
-      err !== null &&
-      typeof err === "object" &&
-      "exitCode" in err &&
-      typeof (err as { exitCode: unknown }).exitCode === "number"
-        ? (err as { exitCode: number }).exitCode
-        : 1;
-    throw new TaskExecutionError(name, exitCode);
+    if (err instanceof ExecaError) {
+      const exitCode = typeof err.exitCode === "number" ? err.exitCode : 1;
+      const signal = typeof err.signal === "string" ? err.signal : null;
+      const message = signal
+        ? `Task "${name}" killed by ${signal}`
+        : `Task "${name}" failed with exit code ${exitCode}`;
+      throw new TaskExecutionError(name, exitCode, message, { cause: err });
+    }
+    // Non-execa error (rare: spawn failure, etc.). Preserve cause anyway.
+    throw new TaskExecutionError(
+      name,
+      1,
+      `Task "${name}" failed: ${String(err)}`,
+      { cause: err },
+    );
   }
 };

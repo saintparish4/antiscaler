@@ -54,7 +54,7 @@ describe("runTasksWithDeps", () => {
 
     // Pre-populate cache with the current hash
     mkdirSync(cacheDir, { recursive: true });
-    writeCache(cacheDir, {
+    await writeCache(cacheDir, {
       tasks: { build: { hash, lastRun: Date.now() } },
     });
 
@@ -89,7 +89,7 @@ describe("runTasksWithDeps", () => {
     writeFileSync(path.join(cwd, "main.ts"), "export const x = 1;");
 
     mkdirSync(cacheDir, { recursive: true });
-    writeCache(cacheDir, {
+    await writeCache(cacheDir, {
       tasks: { build: { hash: "stale-hash", lastRun: Date.now() } },
     });
 
@@ -206,7 +206,7 @@ describe("runTasksWithDeps", () => {
     const hash = await hashTaskInputs(cwd, patterns);
 
     mkdirSync(cacheDir, { recursive: true });
-    writeCache(cacheDir, {
+    await writeCache(cacheDir, {
       tasks: { build: { hash, lastRun: Date.now() } },
     });
 
@@ -258,11 +258,53 @@ describe("runTasksWithDeps", () => {
       executor,
     );
 
-    const cache = readCache(cacheDir);
+    const cache = await readCache(cacheDir);
     expect(cache.tasks["build"]).toBeDefined();
     expect(cache.tasks["build"]?.hash).toBeUndefined();
     expect(typeof cache.tasks["build"]?.lastRun).toBe("number");
     expect(typeof cache.tasks["build"]?.lastDurationMs).toBe("number");
+  });
+
+  // ── Regression: cache flushed even on task failure ───────────
+  it("persists cache to disk even when a task throws (Issue 11)", async () => {
+    writeFileSync(path.join(cwd, "ok.ts"), "export const ok = 1;");
+
+    const config: ResolvedAntiscaleConfig = {
+      ...makeConfig("adaptive"),
+      tasks: {
+        ok: { inputs: ["ok.ts"] },
+        flaky: { dependsOn: ["ok"] },
+      },
+    };
+    const graph = makeGraph([
+      { name: "ok" },
+      { name: "flaky", deps: ["ok"] },
+    ]);
+
+    const executor = vi
+      .fn<(name: string) => Promise<void>>()
+      .mockImplementation(async (name: string) => {
+        if (name === "flaky") throw new TaskExecutionError(name, 2);
+      });
+
+    await expect(
+      runTasksWithDeps(
+        "flaky",
+        graph,
+        {
+          cwd,
+          cacheDir,
+          pm: "npm",
+          config,
+          tasks: config.tasks,
+        },
+        executor as TaskExecutor,
+      ),
+    ).rejects.toBeInstanceOf(TaskExecutionError);
+
+    const cache = await readCache(cacheDir);
+    expect(cache.tasks["ok"]).toBeDefined();
+    expect(typeof cache.tasks["ok"]?.lastDurationMs).toBe("number");
   });
 
   // ── 7. Concurrency ceiling ───────────────────────────────────────────────

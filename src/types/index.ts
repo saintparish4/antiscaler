@@ -1,47 +1,39 @@
-export type Strategy = "adaptive" | "strict"; 
+import type { z } from "zod";
+import type {
+  antiscaleConfigSchema,
+  taskConfigSchema,
+} from "../core/config/schema.js";
 
-export interface TaskConfig {
-    inputs?: string[]; 
-    dependsOn?: string[]; 
-    command?: string; 
-}
+// User-facing config (the object passed to defineConfig
+export type AntiscaleConfig = z.input<typeof antiscaleConfigSchema>;
 
-export interface CacheConfig {
-    mode: "content";
-    directory: string; 
-} 
+// Fully-validated config with all defaults applied
+export type ResolvedAntiscaleConfig = z.output<typeof antiscaleConfigSchema>;
 
-export interface AntiscaleConfig {
-    strategy?: Strategy; 
-    cache?: Partial<CacheConfig>;  
-    tasks?: Record<string, TaskConfig>;  
-}
+export type Strategy = ResolvedAntiscaleConfig["strategy"];
 
-export interface ResolvedAntiscaleConfig {
-    strategy: Strategy; 
-    cache: CacheConfig; 
-    tasks: Record<string, TaskConfig>;  
-}
+export type TaskConfig = z.infer<typeof taskConfigSchema>;
 
-/** Built by the DAG layer (`core/graph`); class implements this contract. -- CHANGES LATER IN PROGRESS*/ 
+export type CacheConfig = ResolvedAntiscaleConfig["cache"];
+
+//Built by the DAG layer (core/graph): class implements this contract
 export interface TaskGraph {
-    addTask(name: string): void;
-    addDependency(task: string, dep: string): void;
-    toLevels(target: string): string[][];
-}
-
-export interface AntiscaleContext {
-    cwd: string; 
-    config: ResolvedAntiscaleConfig; 
-    pm: string; 
-    runtime: RuntimeInfo;
-    framework: string | null; 
-    graph: TaskGraph; 
-    cacheDir: string; 
+  addTask(name: string): void;
+  addDependency(task: string, dep: string): void;
+  toLevels(target: string): string[][];
 }
 
 export interface RuntimeInfo {
-    primary: string; 
-    fallback: string;  
+  primary: string;
+  fallback: string;
 }
 
+export interface AntiscaleContext {
+  cwd: string;
+  config: ResolvedAntiscaleConfig;
+  pm: string;
+  runtime: RuntimeInfo;
+  framework: string | null;
+  graph: TaskGraph;
+  cacheDir: string;
+}
