@@ -4,6 +4,7 @@ import { tmpdir } from "os";
 import path from "path";
 import { runTasksWithDeps, type TaskRunResult } from "../runner.js";
 import type { TaskExecutor } from "../executor.js";
+import { PluginRegistry } from "../../plugins/registry.js";
 import { TaskGraph } from "../../graph/dag.js";
 import { readCache, writeCache } from "../../cache/store.js";
 import { hashTaskInputs } from "../../cache/hashing.js";
@@ -33,6 +34,10 @@ function makeGraph(tasks: Array<{ name: string; deps?: string[] }>): TaskGraph {
     }
   }
   return graph;
+}
+
+function emptyPlugins(): PluginRegistry {
+  return new PluginRegistry();
 }
 
 describe("runTasksWithDeps", () => {
@@ -74,6 +79,7 @@ describe("runTasksWithDeps", () => {
         pm: "npm",
         config,
         tasks: config.tasks,
+        plugins: emptyPlugins(),
       },
       executor,
     );
@@ -109,6 +115,7 @@ describe("runTasksWithDeps", () => {
         pm: "npm",
         config,
         tasks: config.tasks,
+        plugins: emptyPlugins(),
       },
       executor,
     );
@@ -152,6 +159,7 @@ describe("runTasksWithDeps", () => {
         pm: "npm",
         config,
         tasks: config.tasks,
+        plugins: emptyPlugins(),
       },
       executor as TaskExecutor,
     );
@@ -192,6 +200,7 @@ describe("runTasksWithDeps", () => {
           pm: "npm",
           config,
           tasks: config.tasks,
+          plugins: emptyPlugins(),
         },
         executor,
       ),
@@ -226,6 +235,7 @@ describe("runTasksWithDeps", () => {
         pm: "npm",
         config,
         tasks: config.tasks,
+        plugins: emptyPlugins(),
       },
       executor,
     );
@@ -254,6 +264,7 @@ describe("runTasksWithDeps", () => {
         pm: "npm",
         config,
         tasks: config.tasks,
+        plugins: emptyPlugins(),
       },
       executor,
     );
@@ -297,6 +308,7 @@ describe("runTasksWithDeps", () => {
           pm: "npm",
           config,
           tasks: config.tasks,
+          plugins: emptyPlugins(),
         },
         executor as TaskExecutor,
       ),
@@ -346,6 +358,7 @@ describe("runTasksWithDeps", () => {
         pm: "npm",
         config,
         tasks: config.tasks,
+        plugins: emptyPlugins(),
         concurrency: 2,
       },
       executor as TaskExecutor,

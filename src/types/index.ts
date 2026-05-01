@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { PluginRegistry } from "../core/plugins/registry.js";
 import type {
   antiscaleConfigSchema,
   taskConfigSchema,
@@ -36,4 +37,5 @@ export interface AntiscaleContext {
   framework: string | null;
   graph: TaskGraph;
   cacheDir: string;
+  plugins: PluginRegistry;
 }

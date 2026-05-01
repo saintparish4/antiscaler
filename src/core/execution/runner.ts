@@ -1,4 +1,8 @@
+import { createHash } from "node:crypto";
 import os from "node:os";
+
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+
 import type {
   TaskConfig,
   ResolvedAntiscaleConfig,
@@ -12,6 +16,7 @@ import {
 } from "../cache/store.js";
 import { hashTaskInputs } from "../cache/hashing.js";
 import { executeTask, type TaskExecutor } from "./executor.js";
+import type { PluginRegistry } from "../plugins/registry.js";
 
 export interface RunOptions {
   cwd: string;
@@ -19,8 +24,9 @@ export interface RunOptions {
   pm: string;
   config: ResolvedAntiscaleConfig;
   tasks: Record<string, TaskConfig>;
-  // Max tasks to run concurrently inside a single DAG level.
   concurrency?: number;
+  // Optional plugin registry. Defaults to an empty registry.
+  plugins: PluginRegistry;
 }
 
 export interface TaskRunResult {
@@ -100,13 +106,40 @@ export async function runTasksWithDeps(
           const taskCfg = options.tasks[taskName] ?? {};
           const patterns = taskCfg.inputs ?? [];
           const isStrict = options.config.strategy === "strict";
+          const plugins = options.plugins;
+
+          if (plugins) {
+            const skip = await plugins.runOnBeforeExecute(taskName);
+            if (skip) {
+              const result: TaskRunResult = {
+                task: taskName,
+                durationMs: 0,
+                cacheHit: true,
+              };
+              await plugins.runOnAfterExecute(taskName, result);
+              return result;
+            }
+          }
 
           if (!isStrict && patterns.length > 0) {
-            const hash = await hashTaskInputs(options.cwd, patterns);
+            const baseHash = await hashTaskInputs(options.cwd, patterns);
+            const extra = plugins
+              ? await plugins.runOnHash(taskName, patterns)
+              : [];
+            const hash =
+              extra.length === 0
+                ? baseHash
+                : sha256(baseHash + "\x00" + extra.join("\x00"));
             const cached = cache.tasks[taskName];
 
             if (cached !== undefined && cached.hash === hash) {
-              return { task: taskName, durationMs: 0, cacheHit: true };
+              const result: TaskRunResult = {
+                task: taskName,
+                durationMs: 0,
+                cacheHit: true,
+              };
+              if (plugins) await plugins.runOnAfterExecute(taskName, result);
+              return result;
             }
 
             const start = Date.now();
@@ -119,7 +152,13 @@ export async function runTasksWithDeps(
               lastDurationMs: durationMs,
             };
 
-            return { task: taskName, durationMs, cacheHit: false };
+            const result: TaskRunResult = {
+              task: taskName,
+              durationMs,
+              cacheHit: false,
+            };
+            if (plugins) await plugins.runOnAfterExecute(taskName, result);
+            return result;
           }
 
           // Strict mode or no-inputs task: always execute, but still
@@ -133,7 +172,13 @@ export async function runTasksWithDeps(
             lastDurationMs: durationMs,
           };
 
-          return { task: taskName, durationMs, cacheHit: false };
+          const result: TaskRunResult = {
+            task: taskName,
+            durationMs,
+            cacheHit: false,
+          };
+          if (plugins) await plugins.runOnAfterExecute(taskName, result);
+          return result;
         },
       );
 

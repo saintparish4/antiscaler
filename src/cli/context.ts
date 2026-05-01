@@ -3,14 +3,32 @@ import type { RunOptions } from "../core/execution/runner.js";
 import { loadConfig } from "../core/config/loader.js";
 import { detectProject } from "../core/detection/project.js";
 import { buildGraph } from "../core/graph/planner.js";
+import { PluginRegistry } from "../core/plugins/registry.js";
+import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
+import { nextAdapter } from "../adapters/frameworks/next.js";
+import { viteAdapter } from "../adapters/frameworks/vite.js";
+import { genericAdapter } from "../adapters/frameworks/generic.js";
 
 export async function createContext(
   cwd: string = process.cwd(),
 ): Promise<AntiscaleContext> {
   const config = await loadConfig(cwd);
   const { pm, runtime, framework } = detectProject(cwd);
-  const graph = buildGraph(config);
   const cacheDir = config.cache.directory;
+
+  const plugins = new PluginRegistry();
+  plugins.register(wrapFrameworkAsPlugin(nextAdapter));
+  plugins.register(wrapFrameworkAsPlugin(viteAdapter));
+  plugins.register(wrapFrameworkAsPlugin(genericAdapter));
+
+  await plugins.runOnDetect({
+    cwd,
+    pm: pm.name,
+    framework: framework?.name ?? null,
+    tasks: config.tasks,
+  });
+
+  const graph = buildGraph(config);
 
   return {
     cwd,
@@ -20,6 +38,7 @@ export async function createContext(
     framework: framework?.name ?? null,
     graph,
     cacheDir,
+    plugins,
   };
 }
 
@@ -39,6 +58,7 @@ export function toRunOptions(
     pm: ctx.pm,
     config: ctx.config,
     tasks: ctx.config.tasks,
+    plugins: ctx.plugins,
     ...(overrides.concurrency !== undefined
       ? { concurrency: overrides.concurrency }
       : {}),
