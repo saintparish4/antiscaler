@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-03
+
+### Added
+- `PackageGraph` workspace discovery and auto-generated tasks (`core/graph`).
+- Git-diff pre-filter and parallel input hashing for the cache.
+- ts-morph semantic diff classifier.
+- Opt-in event-driven scheduler (config + CLI flag).
+- Expanded Next.js adapter with `apps/*` discovery.
+- Config schema sections: `workspace`, `git`, `semanticDiff`, `scheduler`.
+- End-to-end integration tests under `src/__tests__/integration/`.
+
 ## [0.1.2] - 2026-04-27
 
 ### Fixed
@@ -59,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `antiscaler --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/saintparish4/antiscaler/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/saintparish4/antiscaler/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/saintparish4/antiscaler/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/saintparish4/antiscaler/releases/tag/v0.1.0

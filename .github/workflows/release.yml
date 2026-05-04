@@ -1,0 +1,42 @@
+# Publishes the package to npm when a version tag is pushed (e.g. v0.2.0).
+#
+# Prerequisites:
+#   - Repository secret NPM_TOKEN: npm automation token with publish scope.
+#   - package.json version must match the tag (without the leading "v").
+#
+# Typical flow: bump version and changelog, commit, then:
+#   git tag vX.Y.Z && git push origin vX.Y.Z
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:all
+      - run: pnpm build
+
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
