@@ -8,11 +8,16 @@ import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
 import { nextAdapter } from "../adapters/frameworks/next.js";
 import { viteAdapter } from "../adapters/frameworks/vite.js";
 import { genericAdapter } from "../adapters/frameworks/generic.js";
+import { loadPackageGraph, tasksFromPackageGraph } from "../core/graph/package-graph.js";
 
 export async function createContext(
   cwd: string = process.cwd(),
 ): Promise<AntiscaleContext> {
   const config = await loadConfig(cwd);
+  if (config.workspace?.enabled) {
+    const pkgGraph = await loadPackageGraph(cwd);
+    config.tasks = tasksFromPackageGraph(pkgGraph, config.tasks);
+  }
   const { pm, runtime, framework } = detectProject(cwd);
   const cacheDir = config.cache.directory;
 

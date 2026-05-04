@@ -20,4 +20,9 @@ export const antiscaleConfigSchema = z.object({
     })
     .default(defaultCache),
   tasks: z.record(z.string(), taskConfigSchema).default({}),
+  workspace: z
+    .object({
+      enabled: z.boolean().default(false),
+    })
+    .optional(),
 });
