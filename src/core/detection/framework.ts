@@ -11,9 +11,11 @@ const FRAMEWORK_ADAPTERS: FrameworkAdapter[] = [nextAdapter, viteAdapter];
  * Returns null when no known framework is found (context.framework will be null)
  * The generic adapter is available seperately for commands that need a fallback
  */
-export function detectFramework(cwd: string): FrameworkAdapter | null {
+export async function detectFramework(
+  cwd: string,
+): Promise<FrameworkAdapter | null> {
   for (const adapter of FRAMEWORK_ADAPTERS) {
-    if (adapter.detect(cwd)) return adapter;
+    if (await Promise.resolve(adapter.detect(cwd))) return adapter;
   }
   return null;
 }

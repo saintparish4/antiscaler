@@ -18,10 +18,10 @@ export interface DetectedProject {
  * Runs all detectors in one call. Use this in createContext() and the env command
  * Individual detectors are also exported for targeted use
  */
-export function detectProject(cwd: string): DetectedProject {
+export async function detectProject(cwd: string): Promise<DetectedProject> {
   return {
     pm: detectPackageManager(cwd),
     runtime: detectRuntime(),
-    framework: detectFramework(cwd),
+    framework: await detectFramework(cwd),
   };
 }

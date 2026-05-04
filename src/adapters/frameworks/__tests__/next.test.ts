@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtempSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { nextAdapter } from "../next.js";
+import { nextAdapter, nextPlugin } from "../next.js";
+import type { DetectionContext } from "../../../core/plugins/types.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
@@ -16,56 +17,87 @@ afterEach(() => {
 });
 
 describe("nextAdapter.detect", () => {
-  it("returns true when next is in dependencies", () => {
+  it("returns true when next is in dependencies", async () => {
     const dir = makeTmpDir();
     writeFileSync(
       join(dir, "package.json"),
       JSON.stringify({ dependencies: { next: "14.0.0" } }),
     );
-    expect(nextAdapter.detect(dir)).toBe(true);
+    expect(await nextAdapter.detect(dir)).toBe(true);
   });
 
-  it("returns true when next is in devDependencies", () => {
+  it("returns true when next is in devDependencies", async () => {
     const dir = makeTmpDir();
     writeFileSync(
       join(dir, "package.json"),
       JSON.stringify({ devDependencies: { next: "14.0.0" } }),
     );
-    expect(nextAdapter.detect(dir)).toBe(true);
+    expect(await nextAdapter.detect(dir)).toBe(true);
   });
 
-  it("returns false when next is missing entirely", () => {
+  it("returns true when next is in peerDependencies", async () => {
+    const dir = makeTmpDir();
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ peerDependencies: { next: "14.0.0" } }),
+    );
+    expect(await nextAdapter.detect(dir)).toBe(true);
+  });
+
+  it("returns false when next is missing entirely", async () => {
     const dir = makeTmpDir();
     writeFileSync(
       join(dir, "package.json"),
       JSON.stringify({ dependencies: { react: "18.0.0" } }),
     );
-    expect(nextAdapter.detect(dir)).toBe(false);
+    expect(await nextAdapter.detect(dir)).toBe(false);
   });
 
-  it("returns false when package.json does not exist", () => {
+  it("returns false when package.json does not exist", async () => {
     const dir = makeTmpDir();
-    expect(nextAdapter.detect(dir)).toBe(false);
+    expect(await nextAdapter.detect(dir)).toBe(false);
   });
 
-  it("returns false on malformed package.json (does not throw)", () => {
+  it("returns false on malformed package.json (does not throw)", async () => {
     const dir = makeTmpDir();
     writeFileSync(join(dir, "package.json"), "{ this is not json");
-    expect(nextAdapter.detect(dir)).toBe(false);
+    expect(await nextAdapter.detect(dir)).toBe(false);
   });
 
-  it("returns false when both dep blocks are missing", () => {
+  it("returns false when both dep blocks are missing", async () => {
     const dir = makeTmpDir();
     writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x" }));
-    expect(nextAdapter.detect(dir)).toBe(false);
+    expect(await nextAdapter.detect(dir)).toBe(false);
   });
 });
 
 describe("nextAdapter commands", () => {
-  it("devCommand returns 'next dev'", () => {
-    expect(nextAdapter.devCommand()).toBe("next dev");
+  it("devCommand returns script name dev", () => {
+    expect(nextAdapter.devCommand()).toBe("dev");
   });
-  it("buildCommand returns 'next build'", () => {
-    expect(nextAdapter.buildCommand()).toBe("next build");
+  it("buildCommand returns script name build", () => {
+    expect(nextAdapter.buildCommand()).toBe("build");
+  });
+});
+
+describe("nextPlugin", () => {
+  it("registers per-app build tasks when apps/<name> has next.config", async () => {
+    const dir = makeTmpDir();
+    const apps = join(dir, "apps", "web");
+    mkdirSync(apps, { recursive: true });
+    writeFileSync(join(apps, "next.config.mjs"), "export default {};\n");
+
+    const ctx: DetectionContext = {
+      cwd: dir,
+      pm: "pnpm",
+      framework: "next",
+      tasks: {},
+    };
+    await nextPlugin.hooks?.onDetect?.(ctx);
+
+    expect(ctx.tasks["web:build"]).toEqual({
+      command: "pnpm --filter web run build",
+      inputs: ["apps/web/**/*.{ts,tsx,js,jsx,json,css}"],
+    });
   });
 });

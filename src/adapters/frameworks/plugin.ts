@@ -10,8 +10,8 @@ import type { BuildPlugin } from "../../core/plugins/types.js";
 export const wrapFrameworkAsPlugin = (a: FrameworkAdapter): BuildPlugin => ({
   name: `framework:${a.name}`,
   hooks: {
-    onDetect: (ctx) => {
-      if (!a.detect(ctx.cwd)) return;
+    onDetect: async (ctx) => {
+      if (!(await Promise.resolve(a.detect(ctx.cwd)))) return;
       ctx.framework = ctx.framework ?? a.name;
       // Auto-register dev / build commands when the user hasn't defined them.
       if (!ctx.tasks["dev"]?.command) {

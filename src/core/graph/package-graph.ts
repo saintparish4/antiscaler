@@ -75,7 +75,7 @@ export async function loadPackageGraph(cwd: string): Promise<PackageGraph> {
 export function tasksFromPackageGraph(
   graph: PackageGraph,
   existing: Record<string, TaskConfig>,
-  scripts: ReadonlyArray<string> = ["build", "test", "lint", "typecheck"],
+  scripts: ReadonlyArray<string> = ["build", "test", "lint"],
 ): Record<string, TaskConfig> {
   const out: Record<string, TaskConfig> = { ...existing };
   for (const pkg of graph.packages) {

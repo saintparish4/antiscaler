@@ -5,10 +5,13 @@ import { detectProject } from "../core/detection/project.js";
 import { buildGraph } from "../core/graph/planner.js";
 import { PluginRegistry } from "../core/plugins/registry.js";
 import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
-import { nextAdapter } from "../adapters/frameworks/next.js";
+import { nextAdapter, nextPlugin } from "../adapters/frameworks/next.js";
 import { viteAdapter } from "../adapters/frameworks/vite.js";
 import { genericAdapter } from "../adapters/frameworks/generic.js";
-import { loadPackageGraph, tasksFromPackageGraph } from "../core/graph/package-graph.js";
+import {
+  loadPackageGraph,
+  tasksFromPackageGraph,
+} from "../core/graph/package-graph.js";
 
 export async function createContext(
   cwd: string = process.cwd(),
@@ -16,15 +19,20 @@ export async function createContext(
   const config = await loadConfig(cwd);
   if (config.workspace?.enabled) {
     const pkgGraph = await loadPackageGraph(cwd);
-    config.tasks = tasksFromPackageGraph(pkgGraph, config.tasks);
+    config.tasks = tasksFromPackageGraph(
+      pkgGraph,
+      config.tasks,
+      config.workspace.scripts,
+    );
   }
-  const { pm, runtime, framework } = detectProject(cwd);
+  const { pm, runtime, framework } = await detectProject(cwd);
   const cacheDir = config.cache.directory;
 
   const plugins = new PluginRegistry();
   plugins.register(wrapFrameworkAsPlugin(nextAdapter));
   plugins.register(wrapFrameworkAsPlugin(viteAdapter));
   plugins.register(wrapFrameworkAsPlugin(genericAdapter));
+  plugins.register(nextPlugin);
 
   await plugins.runOnDetect({
     cwd,

@@ -1,5 +1,6 @@
 import path from "path";
 import { existsSync } from "fs";
+import { readFile } from "fs/promises";
 import type {
   AntiscaleConfig,
   ResolvedAntiscaleConfig,
@@ -11,28 +12,40 @@ export function defineConfig(config: AntiscaleConfig): AntiscaleConfig {
   return config;
 }
 
-const CONFIG_FILENAMES = [
+const CANDIDATES = [
   "antiscale.config.ts",
-  "antiscale.config.js",
   "antiscale.config.mjs",
+  "antiscale.config.js",
+  "buildflow.config.json",
+  "antiscale.config.json",
 ];
 
 export async function loadConfig(
   cwd: string = process.cwd(),
 ): Promise<ResolvedAntiscaleConfig> {
-  // 1. Find config file
-  const configPath = CONFIG_FILENAMES.map((f) => path.join(cwd, f)).find(
-    existsSync,
-  );
+  // 1. Find config file (first match wins)
+  const configPath = CANDIDATES.map((f) => path.join(cwd, f)).find(existsSync);
 
   let raw: unknown = {};
 
   if (configPath) {
-    // 2. Use jiti for TypeScript/ESM support (lazy import)
-    const { createJiti } = await import("jiti");
-    const jiti = createJiti(import.meta.url);
-    const mod = await jiti.import(configPath);
-    raw = (mod as { default?: unknown }).default ?? mod;
+    if (path.extname(configPath) === ".json") {
+      try {
+        const text = await readFile(configPath, "utf8");
+        raw = JSON.parse(text) as unknown;
+      } catch (err) {
+        const hint = err instanceof Error ? err.message : String(err);
+        throw new ConfigError(
+          `Invalid JSON config (${path.basename(configPath)}): ${hint}`,
+        );
+      }
+    } else {
+      // TypeScript / JS / MJS: jiti for TS + ESM
+      const { createJiti } = await import("jiti");
+      const jiti = createJiti(import.meta.url);
+      const mod = await jiti.import(configPath);
+      raw = (mod as { default?: unknown }).default ?? mod;
+    }
   }
 
   // 3. Parse through Zod schema (applies defaults, validates)

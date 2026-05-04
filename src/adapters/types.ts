@@ -11,8 +11,8 @@ export interface RuntimeAdapter {
 }
 
 export interface FrameworkAdapter {
-    name: string; 
-    detect(cwd: string): boolean; 
-    devCommand(): string; 
-    buildCommand(): string;  
+  name: string;
+  detect(cwd: string): boolean | Promise<boolean>;
+  devCommand(): string;
+  buildCommand(): string;
 }
