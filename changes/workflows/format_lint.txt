@@ -1,0 +1,17 @@
+# Format all files
+pnpx @biomejs/biome format --write
+
+# Format specific files
+pnpx @biomejs/biome format --write <files>
+
+# Lint and apply safe fixes to all files
+pnpx @biomejs/biome lint --write
+
+# Lint files and apply safe fixes to specific files
+pnpx @biomejs/biome lint --write <files>
+
+# Format, lint, and organize imports of all files
+pnpx @biomejs/biome check --write
+
+# Format, lint, and organize imports of specific files
+pnpx @biomejs/biome check --write <files>

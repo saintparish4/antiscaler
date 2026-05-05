@@ -1,9 +1,9 @@
-import type { z } from "zod";
-import type { PluginRegistry } from "../core/plugins/registry.js";
+import type * as z from "zod";
 import type {
-  antiscaleConfigSchema,
-  taskConfigSchema,
+	antiscaleConfigSchema,
+	taskConfigSchema,
 } from "../core/config/schema.js";
+import type { PluginRegistry } from "../core/plugins/registry.js";
 
 // User-facing config (the object passed to defineConfig
 export type AntiscaleConfig = z.input<typeof antiscaleConfigSchema>;
@@ -19,24 +19,24 @@ export type CacheConfig = ResolvedAntiscaleConfig["cache"];
 
 //Built by the DAG layer (core/graph): class implements this contract
 export interface TaskGraph {
-  addTask(name: string): void;
-  addDependency(task: string, dep: string): void;
-  toLevels(target: string): string[][];
+	addTask(name: string): void;
+	addDependency(task: string, dep: string): void;
+	toLevels(target: string): string[][];
 }
 
 export interface RuntimeInfo {
-  primary: string;
-  fallback: string;
+	primary: string;
+	fallback: string;
 }
 
 export interface AntiscaleContext {
-  cwd: string;
-  config: ResolvedAntiscaleConfig;
-  pm: string;
-  runtime: RuntimeInfo;
-  framework: string | null;
-  graph: TaskGraph;
-  cacheDir: string;
-  plugins: PluginRegistry;
-  packageScopes?: string[];
+	cwd: string;
+	config: ResolvedAntiscaleConfig;
+	pm: string;
+	runtime: RuntimeInfo;
+	framework: string | null;
+	graph: TaskGraph;
+	cacheDir: string;
+	plugins: PluginRegistry;
+	packageScopes?: string[];
 }

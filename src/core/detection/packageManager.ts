@@ -1,9 +1,9 @@
-import { existsSync } from "fs";
-import path from "path";
-import type { PackageManagerAdapter } from "../../adapters/types.js";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { npmAdapter } from "../../adapters/pm/npm.js";
 import { pnpmAdapter } from "../../adapters/pm/pnpm.js";
 import { yarnAdapter } from "../../adapters/pm/yarn.js";
+import type { PackageManagerAdapter } from "../../adapters/types.js";
 
 /**
  * Detects the package manager by checking for well-known lockfiles
@@ -11,8 +11,8 @@ import { yarnAdapter } from "../../adapters/pm/yarn.js";
  * Always returns an adapter -- falls back to npm
  */
 export function detectPackageManager(cwd: string): PackageManagerAdapter {
-  if (existsSync(path.join(cwd, "pnpm-lock.yaml"))) return pnpmAdapter;
-  if (existsSync(path.join(cwd, "yarn.lock"))) return yarnAdapter;
-  if (existsSync(path.join(cwd, "package-lock.json"))) return npmAdapter;
-  return npmAdapter; // fallback
+	if (existsSync(path.join(cwd, "pnpm-lock.yaml"))) return pnpmAdapter;
+	if (existsSync(path.join(cwd, "yarn.lock"))) return yarnAdapter;
+	if (existsSync(path.join(cwd, "package-lock.json"))) return npmAdapter;
+	return npmAdapter; // fallback
 }

@@ -25,30 +25,30 @@ import { defineConfig } from "./src/index.js";
 //   src/core/insight/__tests__/reporter.test.ts
 
 export default defineConfig({
-  strategy: "adaptive",
-  tasks: {
-    echoQuoted: {
-      command: `node -e "console.log('antiscaler ok')"`,
-      // Content cache: second `run echoQuoted` with unchanged config → HIT.
-      inputs: ["antiscale.config.ts"],
-    },
-    typecheck: {
-      command: "npm run typecheck",
-      inputs: ["src/**/*.ts", "tsconfig.json"],
-    },
-    test: {
-      command: "npm run test:run",
-      inputs: ["src/**/*.ts", "tsconfig.json"],
-    },
-    build: {
-      command: "npm run build",
-      dependsOn: ["typecheck", "test"],
-      inputs: [
-        "src/**/*.ts",
-        "package.json",
-        "tsconfig.json",
-        "tsup.config.ts",
-      ],
-    },
-  },
+	strategy: "adaptive",
+	tasks: {
+		echoQuoted: {
+			command: `node -e "console.log('antiscaler ok')"`,
+			// Content cache: second `run echoQuoted` with unchanged config → HIT.
+			inputs: ["antiscale.config.ts"],
+		},
+		typecheck: {
+			command: "npm run typecheck",
+			inputs: ["src/**/*.ts", "tsconfig.json"],
+		},
+		test: {
+			command: "npm run test:run",
+			inputs: ["src/**/*.ts", "tsconfig.json"],
+		},
+		build: {
+			command: "npm run build",
+			dependsOn: ["typecheck", "test"],
+			inputs: [
+				"src/**/*.ts",
+				"package.json",
+				"tsconfig.json",
+				"tsup.config.ts",
+			],
+		},
+	},
 });

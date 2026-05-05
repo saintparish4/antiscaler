@@ -1,84 +1,86 @@
-import type { AntiscaleContext } from "../types/index.js";
-import type { RunOptions } from "../core/execution/runner.js";
+import { genericAdapter } from "../adapters/frameworks/generic.js";
+import { nextAdapter, nextPlugin } from "../adapters/frameworks/next.js";
+import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
+import { viteAdapter } from "../adapters/frameworks/vite.js";
+import { getChangedPackages } from "../core/cache/git-diff.js";
 import { loadConfig } from "../core/config/loader.js";
 import { detectProject } from "../core/detection/project.js";
+import type { RunOptions } from "../core/execution/runner.js";
+import {
+	loadPackageGraph,
+	tasksFromPackageGraph,
+} from "../core/graph/package-graph.js";
 import { buildGraph } from "../core/graph/planner.js";
 import { PluginRegistry } from "../core/plugins/registry.js";
-import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
-import { nextAdapter, nextPlugin } from "../adapters/frameworks/next.js";
-import { viteAdapter } from "../adapters/frameworks/vite.js";
-import { genericAdapter } from "../adapters/frameworks/generic.js";
-import {
-  loadPackageGraph,
-  tasksFromPackageGraph,
-} from "../core/graph/package-graph.js";
-import { getChangedPackages } from "../core/cache/git-diff.js";
+import type { AntiscaleContext } from "../types/index.js";
 
 export async function createContext(
-  cwd: string = process.cwd(),
+	cwd: string = process.cwd(),
 ): Promise<AntiscaleContext> {
-  const config = await loadConfig(cwd);
+	const config = await loadConfig(cwd);
 
-  let pkgGraph: Awaited<ReturnType<typeof loadPackageGraph>> | undefined;
-  if (config.workspace?.enabled) {
-    pkgGraph = await loadPackageGraph(cwd);
-    config.tasks = tasksFromPackageGraph(
-      pkgGraph,
-      config.tasks,
-      config.workspace.scripts,
-    );
-  }
+	let pkgGraph: Awaited<ReturnType<typeof loadPackageGraph>> | undefined;
+	if (config.workspace?.enabled) {
+		pkgGraph = await loadPackageGraph(cwd);
+		config.tasks = tasksFromPackageGraph(
+			pkgGraph,
+			config.tasks,
+			config.workspace.scripts,
+		);
+	}
 
-  let packageScopes: string[] | undefined;
-  if (config.git?.enabled !== false) {
-    const graph = pkgGraph ?? await loadPackageGraph(cwd).catch(() => ({
-      packages: [] as Array<{ name: string; dir: string; manifest: { name: string } }>,
-      edges: new Map<string, ReadonlySet<string>>(),
-    }));
-    const changed = await getChangedPackages(
-      cwd,
-      graph,
-      config.git?.baseRef,
-    );
-    // null  -> git unavailable; skip optimization
-    // empty -> no packages matched (single-pkg repo or no changes yet);
-    //          skip filtering to avoid hashing zero files
-    if (changed !== null && changed.size > 0) {
-      packageScopes = graph.packages
-        .filter((p) => changed.has(p.name))
-        .map((p) => p.dir);
-    }
-  }
+	let packageScopes: string[] | undefined;
+	if (config.git?.enabled !== false) {
+		const graph =
+			pkgGraph ??
+			(await loadPackageGraph(cwd).catch(() => ({
+				packages: [] as Array<{
+					name: string;
+					dir: string;
+					manifest: { name: string };
+				}>,
+				edges: new Map<string, ReadonlySet<string>>(),
+			})));
+		const changed = await getChangedPackages(cwd, graph, config.git?.baseRef);
+		// null  -> git unavailable; skip optimization
+		// empty -> no packages matched (single-pkg repo or no changes yet);
+		//          skip filtering to avoid hashing zero files
+		if (changed !== null && changed.size > 0) {
+			packageScopes = graph.packages
+				.filter((p) => changed.has(p.name))
+				.map((p) => p.dir);
+		}
+	}
 
-  const { pm, runtime, framework } = await detectProject(cwd);
-  const cacheDir = config.cache.directory;
+	const { pm, runtime, framework } = await detectProject(cwd);
+	const cacheDir = config.cache.directory;
 
-  const plugins = new PluginRegistry();
-  plugins.register(wrapFrameworkAsPlugin(nextAdapter));
-  plugins.register(wrapFrameworkAsPlugin(viteAdapter));
-  plugins.register(wrapFrameworkAsPlugin(genericAdapter));
-  plugins.register(nextPlugin);
+	const plugins = new PluginRegistry();
+	plugins.register(wrapFrameworkAsPlugin(nextAdapter));
+	plugins.register(wrapFrameworkAsPlugin(viteAdapter));
+	plugins.register(wrapFrameworkAsPlugin(genericAdapter));
+	plugins.register(nextPlugin);
 
-  await plugins.runOnDetect({
-    cwd,
-    pm: pm.name,
-    framework: framework?.name ?? null,
-    tasks: config.tasks,
-  });
+	await plugins.runOnDetect({
+		cwd,
+		pm: pm.name,
+		framework: framework?.name ?? null,
+		tasks: config.tasks,
+	});
 
-  const graph = buildGraph(config);
+	const graph = buildGraph(config);
 
-  return {
-    cwd,
-    config,
-    pm: pm.name,
-    runtime: { primary: runtime.name, fallback: "node" },
-    framework: framework?.name ?? null,
-    graph,
-    cacheDir,
-    plugins,
-    ...(packageScopes !== undefined ? { packageScopes } : {}),
-  };
+	return {
+		cwd,
+		config,
+		pm: pm.name,
+		runtime: { primary: runtime.name, fallback: "node" },
+		framework: framework?.name ?? null,
+		graph,
+		cacheDir,
+		plugins,
+		...(packageScopes !== undefined ? { packageScopes } : {}),
+	};
 }
 
 /**
@@ -88,21 +90,23 @@ export async function createContext(
  * translation.
  */
 export function toRunOptions(
-  ctx: AntiscaleContext,
-  overrides: { concurrency?: number } = {},
+	ctx: AntiscaleContext,
+	overrides: { concurrency?: number } = {},
 ): RunOptions {
-  const schedulerEnabled = ctx.config.scheduler?.policy !== undefined;
-  return {
-    cwd: ctx.cwd,
-    cacheDir: ctx.cacheDir,
-    pm: ctx.pm,
-    config: ctx.config,
-    tasks: ctx.config.tasks,
-    plugins: ctx.plugins,
-    ...(ctx.packageScopes !== undefined ? { packageScopes: ctx.packageScopes } : {}),
-    ...(schedulerEnabled ? { useScheduler: true } : {}),
-    ...(overrides.concurrency !== undefined
-      ? { concurrency: overrides.concurrency }
-      : {}),
-  };
+	const schedulerEnabled = ctx.config.scheduler?.policy !== undefined;
+	return {
+		cwd: ctx.cwd,
+		cacheDir: ctx.cacheDir,
+		pm: ctx.pm,
+		config: ctx.config,
+		tasks: ctx.config.tasks,
+		plugins: ctx.plugins,
+		...(ctx.packageScopes !== undefined
+			? { packageScopes: ctx.packageScopes }
+			: {}),
+		...(schedulerEnabled ? { useScheduler: true } : {}),
+		...(overrides.concurrency !== undefined
+			? { concurrency: overrides.concurrency }
+			: {}),
+	};
 }

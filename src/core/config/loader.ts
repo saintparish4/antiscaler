@@ -1,62 +1,62 @@
-import path from "path";
-import { existsSync } from "fs";
-import { readFile } from "fs/promises";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type {
-  AntiscaleConfig,
-  ResolvedAntiscaleConfig,
+	AntiscaleConfig,
+	ResolvedAntiscaleConfig,
 } from "../../types/index.js";
 import { ConfigError } from "../errors.js";
 import { antiscaleConfigSchema } from "./schema.js";
 
 export function defineConfig(config: AntiscaleConfig): AntiscaleConfig {
-  return config;
+	return config;
 }
 
 const CANDIDATES = [
-  "antiscale.config.ts",
-  "antiscale.config.mjs",
-  "antiscale.config.js",
-  "buildflow.config.json",
-  "antiscale.config.json",
+	"antiscale.config.ts",
+	"antiscale.config.mjs",
+	"antiscale.config.js",
+	"buildflow.config.json",
+	"antiscale.config.json",
 ];
 
 export async function loadConfig(
-  cwd: string = process.cwd(),
+	cwd: string = process.cwd(),
 ): Promise<ResolvedAntiscaleConfig> {
-  // 1. Find config file (first match wins)
-  const configPath = CANDIDATES.map((f) => path.join(cwd, f)).find(existsSync);
+	// 1. Find config file (first match wins)
+	const configPath = CANDIDATES.map((f) => path.join(cwd, f)).find(existsSync);
 
-  let raw: unknown = {};
+	let raw: unknown = {};
 
-  if (configPath) {
-    if (path.extname(configPath) === ".json") {
-      try {
-        const text = await readFile(configPath, "utf8");
-        raw = JSON.parse(text) as unknown;
-      } catch (err) {
-        const hint = err instanceof Error ? err.message : String(err);
-        throw new ConfigError(
-          `Invalid JSON config (${path.basename(configPath)}): ${hint}`,
-        );
-      }
-    } else {
-      // TypeScript / JS / MJS: jiti for TS + ESM
-      const { createJiti } = await import("jiti");
-      const jiti = createJiti(import.meta.url);
-      const mod = await jiti.import(configPath);
-      raw = (mod as { default?: unknown }).default ?? mod;
-    }
-  }
+	if (configPath) {
+		if (path.extname(configPath) === ".json") {
+			try {
+				const text = await readFile(configPath, "utf8");
+				raw = JSON.parse(text) as unknown;
+			} catch (err) {
+				const hint = err instanceof Error ? err.message : String(err);
+				throw new ConfigError(
+					`Invalid JSON config (${path.basename(configPath)}): ${hint}`,
+				);
+			}
+		} else {
+			// TypeScript / JS / MJS: jiti for TS + ESM
+			const { createJiti } = await import("jiti");
+			const jiti = createJiti(import.meta.url);
+			const mod = await jiti.import(configPath);
+			raw = (mod as { default?: unknown }).default ?? mod;
+		}
+	}
 
-  // 3. Parse through Zod schema (applies defaults, validates)
-  const result = antiscaleConfigSchema.safeParse(raw);
+	// 3. Parse through Zod schema (applies defaults, validates)
+	const result = antiscaleConfigSchema.safeParse(raw);
 
-  if (!result.success) {
-    const messages = result.error.issues
-      .map((e) => ` ${e.path.map(String).join(".")}: ${e.message}`)
-      .join("\n");
-    throw new ConfigError(`Invalid antiscale config:\n${messages}`);
-  }
+	if (!result.success) {
+		const messages = result.error.issues
+			.map((e) => ` ${e.path.map(String).join(".")}: ${e.message}`)
+			.join("\n");
+		throw new ConfigError(`Invalid antiscale config:\n${messages}`);
+	}
 
-  return result.data as ResolvedAntiscaleConfig;
+	return result.data as ResolvedAntiscaleConfig;
 }

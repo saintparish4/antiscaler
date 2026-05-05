@@ -10,16 +10,16 @@
 > version and reviewing the [CHANGELOG](./CHANGELOG.md) before upgrading in
 > any project you rely on.
 
-Adaptive dev orchestration CLI that understands your project, builds a task
-dependency graph, and executes only what's necessary using content-based
-caching and runtime detection. Instead of locking you into one stack, Antiscaler
-sits on top of whatever you already use and optimizes your dev loop.
+Adaptive dev orchestration CLI that detects your environment, builds a task
+dependency graph, and skips unchanged work with content-based caching.
+Antiscaler sits on top of your existing stack and optimizes your dev loop
+without forcing a framework migration.
 
 ---
 
 ## Features
 
-**Active in the CLI today (0.2.x)**
+**Active in the CLI today (0.3.0)**
 
 - **Auto-detection** — Detects your package manager (npm / yarn / pnpm),
   runtime (Node / Bun / Deno), and framework (Next.js / Vite / generic).
@@ -27,10 +27,15 @@ sits on top of whatever you already use and optimizes your dev loop.
   dependency graph and runs each level in parallel.
 - **Content hashing** — SHA-256 hashes of input globs; unchanged inputs
   produce a cache hit and skip execution entirely.
+- **Git-diff pre-filter** — Uses `git diff` (configurable base ref) to narrow
+  hashing to affected workspace packages before execution.
 - **Workspace / PackageGraph** — Discovers workspace packages from
   `pnpm-workspace.yaml`, `package.json workspaces`, and tsconfig project
   references; auto-generates cross-package task entries. Enable via
   `workspace.enabled: true` in config.
+- **Event-driven scheduler** — Optional scheduler policy (`auto`,
+  `light-first`, `pack-heavy`, `critical-path`) starts tasks as soon as deps
+  are satisfied, instead of waiting for full DAG waves.
 - **Plugin interface** — `BuildPlugin` hooks (`onDetect`, `onHash`,
   `onBeforeExecute`, `onAfterExecute`) for extending task lifecycle.
   Framework adapters (Next.js, Vite, generic) are built on top of this.
@@ -39,30 +44,21 @@ sits on top of whatever you already use and optimizes your dev loop.
 - **Works anywhere** — No monorepo tooling required. Drop a config file into
   any repo and go.
 
-**Built, not yet CLI-surfaced (coming in a near-term patch)**
+**In codebase but not fully CLI-activated yet**
 
-The following modules are fully implemented and tested but not yet wired
-into the CLI execution path. They will be activated in an upcoming release:
+- **Semantic diff classifier** — AST-based `non-impacting` / `internal` /
+  `breaking` classifier (`ts-morph`) exists in core and tests, with broader
+  PR-aware CLI integration planned in the next phase.
 
-- **Git-diff pre-filter** — Translates a `git diff` against a base ref into
-  an affected-package set and skips tasks whose inputs haven't changed.
-  Config key: `git.enabled` / `git.baseRef`.
-- **Semantic diff** — AST-based change classifier (ts-morph) that
-  distinguishes `non-impacting` (comments/whitespace) → `internal`
-  (unexported logic) → `breaking` (public API) changes. Config key:
-  `semanticDiff.enabled`.
-- **Event-driven scheduler** — Fires tasks the moment their dependencies
-  complete rather than waiting for a full DAG level to drain. Config key:
-  `scheduler.policy`.
+**Roadmap (implementation phases)**
 
-**Coming in future releases**
-
-| Version | Phase | Highlights |
-| ------- | ----- | ---------- |
-| 0.3.0 | Runtime-driven builds | Consumer-side webpack/vite tracer that records which modules each route actually pulls in; `antiscaler build --scope=<session>` to build only what was touched at runtime. |
-| 0.4.0 | PR-aware flows | Semantic conflict detection, PR diff scoping, GitHub Actions composite actions. |
-| 0.5.0 | Self-organizing workspace | Auto-discovers and wires tasks across packages; dependency graph visualizer. |
-| 0.6.0 | Cost-aware scheduling + remote cache | Edge-optimized task scheduling, remote shared cache, cost budgets. |
+| Status | Target Version | Phase | Highlights |
+| ------ | -------------- | ----- | ---------- |
+| Current | 0.3.x | Phase 0 (core plumbing) | DAG + content cache, workspace PackageGraph, git-diff pre-filter, event-driven scheduler, plugin registry, insight reporting. |
+| Planned | 0.4.0 | Phase 1 (runtime-driven builds) | Runtime tracer entrypoint, trace-scoped build execution, performance-guided invalidation. |
+| Planned | 0.5.0 | Phase 2 (PR-aware flows) | Semantic conflict detection, PR replay/check/report commands, GitHub Actions reporting. |
+| Planned | 0.6.0 | Phase 3 (workspace intelligence) | Import graph analysis, layout suggestions, auto-injected build dependencies, workspace commands/bot integration. |
+| Planned | 0.7.0 | Phase 4 (cost-aware scheduling + remote cache) | Cost model, advanced scheduling policies, route-scoped Next.js builds, remote semantic-aware cache. |
 
 ---
 
@@ -131,10 +127,10 @@ export default defineConfig({
 | `tasks.*.dependsOn`      | `string[]`                                                  | `[]`                  | Tasks that must run first                                |
 | `workspace.enabled`      | `boolean`                                                   | `false`               | Enable workspace / PackageGraph discovery                |
 | `workspace.scripts`      | `string[]`                                                  | `["build","test","lint"]` | Scripts to auto-generate cross-package tasks for     |
-| `git.enabled`            | `boolean`                                                   | `true`                 | *(not yet active)* Git-diff pre-filter                  |
-| `git.baseRef`            | `string`                                                    | `"HEAD~1"`            | *(not yet active)* Base ref for diff                     |
-| `semanticDiff.enabled`   | `boolean`                                                   | `false`               | *(not yet active)* AST-based change classifier           |
-| `scheduler.policy`       | `"auto" \| "light-first" \| "pack-heavy" \| "critical-path"`| `"auto"`             | *(not yet active)* Task scheduling policy                |
+| `git.enabled`            | `boolean`                                                   | `true`                 | Enable/disable git-diff pre-filter for package scoping  |
+| `git.baseRef`            | `string`                                                    | `"HEAD~1"`            | Base ref used by git-diff pre-filter                     |
+| `semanticDiff.enabled`   | `boolean`                                                   | `false`               | Enable semantic diff hooks (currently partial/experimental wiring) |
+| `scheduler.policy`       | `"auto" \| "light-first" \| "pack-heavy" \| "critical-path"`| `"auto"`             | Scheduler policy for event-driven execution              |
 
 > Note: the config filename (`antiscale.config.ts`) and cache directory
 > (`.antiscale/cache`) are internal conventions and intentionally retain the

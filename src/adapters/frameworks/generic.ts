@@ -5,17 +5,17 @@ import type { FrameworkAdapter } from "../types.js";
  * Commands fall back to the package manager's run scripts
  */
 export const genericAdapter: FrameworkAdapter = {
-  name: "generic",
+	name: "generic",
 
-  detect(_cwd: string): boolean {
-    return true; // always matches -- used only as a fallback
-  },
+	detect(_cwd: string): boolean {
+		return true; // always matches -- used only as a fallback
+	},
 
-  devCommand(): string {
-    return "dev";
-  },
+	devCommand(): string {
+		return "dev";
+	},
 
-  buildCommand(): string {
-    return "build";
-  },
+	buildCommand(): string {
+		return "build";
+	},
 };
