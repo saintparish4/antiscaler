@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-04
+
+### Added
+
+- Git-diff affected packages now narrow content hashing: changed workspace
+  packages are passed as `packageScopes` from context into `RunOptions` and
+  `hashTaskInputs`, so unchanged packages can cache-hit without re-reading all
+  matched inputs.
+
+### Changed
+
+- `scheduler.policy` in config enables the event-driven scheduler (`useScheduler`
+  in run options) without requiring a CLI flag.
+
 ## [0.2.0] - 2026-05-03
 
 ### Added
@@ -70,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `antiscaler --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/saintparish4/antiscaler/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/saintparish4/antiscaler/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/saintparish4/antiscaler/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/saintparish4/antiscaler/compare/v0.1.0...v0.1.1
