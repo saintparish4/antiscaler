@@ -38,4 +38,5 @@ export interface AntiscaleContext {
   graph: TaskGraph;
   cacheDir: string;
   plugins: PluginRegistry;
+  packageScopes?: string[];
 }

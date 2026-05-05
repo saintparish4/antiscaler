@@ -32,6 +32,8 @@ export interface RunOptions {
   priorityOf?: (task: string) => number;
   // Optional plugin registry. Defaults to an empty registry.
   plugins: PluginRegistry;
+  /** When set, hashTaskInputs only reads files inside these dirs. */
+  packageScopes?: string[];
 }
 
 export interface TaskRunResult {
@@ -111,7 +113,13 @@ async function runOneTask(
   }
 
   if (!isStrict && patterns.length > 0) {
-    const baseHash = await hashTaskInputs(options.cwd, patterns);
+    const baseHash = await hashTaskInputs(
+      options.cwd,
+      patterns,
+      options.packageScopes !== undefined
+        ? { packageScopes: options.packageScopes }
+        : {},
+    );
     const extra = plugins ? await plugins.runOnHash(taskName, patterns) : [];
     const hash =
       extra.length === 0

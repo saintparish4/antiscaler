@@ -12,19 +12,44 @@ import {
   loadPackageGraph,
   tasksFromPackageGraph,
 } from "../core/graph/package-graph.js";
+import { getChangedPackages } from "../core/cache/git-diff.js";
 
 export async function createContext(
   cwd: string = process.cwd(),
 ): Promise<AntiscaleContext> {
   const config = await loadConfig(cwd);
+
+  let pkgGraph: Awaited<ReturnType<typeof loadPackageGraph>> | undefined;
   if (config.workspace?.enabled) {
-    const pkgGraph = await loadPackageGraph(cwd);
+    pkgGraph = await loadPackageGraph(cwd);
     config.tasks = tasksFromPackageGraph(
       pkgGraph,
       config.tasks,
       config.workspace.scripts,
     );
   }
+
+  let packageScopes: string[] | undefined;
+  if (config.git?.enabled !== false) {
+    const graph = pkgGraph ?? await loadPackageGraph(cwd).catch(() => ({
+      packages: [] as Array<{ name: string; dir: string; manifest: { name: string } }>,
+      edges: new Map<string, ReadonlySet<string>>(),
+    }));
+    const changed = await getChangedPackages(
+      cwd,
+      graph,
+      config.git?.baseRef,
+    );
+    // null  -> git unavailable; skip optimization
+    // empty -> no packages matched (single-pkg repo or no changes yet);
+    //          skip filtering to avoid hashing zero files
+    if (changed !== null && changed.size > 0) {
+      packageScopes = graph.packages
+        .filter((p) => changed.has(p.name))
+        .map((p) => p.dir);
+    }
+  }
+
   const { pm, runtime, framework } = await detectProject(cwd);
   const cacheDir = config.cache.directory;
 
@@ -52,6 +77,7 @@ export async function createContext(
     graph,
     cacheDir,
     plugins,
+    ...(packageScopes !== undefined ? { packageScopes } : {}),
   };
 }
 
@@ -65,6 +91,7 @@ export function toRunOptions(
   ctx: AntiscaleContext,
   overrides: { concurrency?: number } = {},
 ): RunOptions {
+  const schedulerEnabled = ctx.config.scheduler?.policy !== undefined;
   return {
     cwd: ctx.cwd,
     cacheDir: ctx.cacheDir,
@@ -72,6 +99,8 @@ export function toRunOptions(
     config: ctx.config,
     tasks: ctx.config.tasks,
     plugins: ctx.plugins,
+    ...(ctx.packageScopes !== undefined ? { packageScopes: ctx.packageScopes } : {}),
+    ...(schedulerEnabled ? { useScheduler: true } : {}),
     ...(overrides.concurrency !== undefined
       ? { concurrency: overrides.concurrency }
       : {}),
