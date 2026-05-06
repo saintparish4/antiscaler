@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./tracer": {
+      "types": "./dist/tracer.d.ts",
+      "import": "./dist/tracer.js"
     }
   },
   "bin": {
