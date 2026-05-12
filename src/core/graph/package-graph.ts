@@ -112,7 +112,10 @@ export function tasksFromPackageGraph(
 		if (workspaceTasks.length > 0 && out[script] !== undefined) {
 			const existingDeps = out[script].dependsOn ?? [];
 			const newDeps = workspaceTasks.filter((t) => !existingDeps.includes(t));
-			out[script] = { ...out[script], dependsOn: [...existingDeps, ...newDeps] };
+			out[script] = {
+				...out[script],
+				dependsOn: [...existingDeps, ...newDeps],
+			};
 		}
 	}
 

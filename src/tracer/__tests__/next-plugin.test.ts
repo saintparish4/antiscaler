@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { TraceFile } from "../types.js";
 import { antiscalerNextPlugin } from "../next-plugin.js";
+import type { TraceFile } from "../types.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
@@ -57,7 +57,7 @@ describe("antiscalerNextPlugin", () => {
 		const cwd = makeTmpDir();
 		const { compiler } = mockCompiler(cwd);
 		const plugin = antiscalerNextPlugin({ outDir: "traces" });
-		plugin.apply(compiler as any);
+		plugin.apply(compiler);
 		// Hooks should have been tapped
 		expect(true).toBe(true); // no throw = taps registered
 	});
@@ -69,13 +69,13 @@ describe("antiscalerNextPlugin", () => {
 			sessionId: "nx1",
 			outDir: "traces",
 		});
-		plugin.apply(compiler as any);
+		plugin.apply(compiler);
 
 		simulateCompilation([
 			{ resource: "/app/src/page.tsx" },
 			{ resource: "/app/node_modules/react/index.js" },
 			{ resource: "/app/src/lib.ts" },
-			{ resource: undefined },
+			{ resource: "" },
 			{},
 		]);
 
@@ -96,7 +96,7 @@ describe("antiscalerNextPlugin", () => {
 			sessionId: "nx2",
 			outDir: "traces",
 		});
-		plugin.apply(compiler as any);
+		plugin.apply(compiler);
 		simulateCompilation([{ resource: "/z.ts" }, { resource: "/a.ts" }]);
 
 		return simulateDone().then(async () => {
@@ -116,7 +116,7 @@ describe("antiscalerNextPlugin", () => {
 			sessionId: "custom-id",
 			outDir: "traces",
 		});
-		plugin.apply(compiler as any);
+		plugin.apply(compiler);
 
 		return simulateDone().then(async () => {
 			const trace: TraceFile = JSON.parse(
@@ -133,7 +133,7 @@ describe("antiscalerNextPlugin", () => {
 			sessionId: "nx3",
 			outDir: "traces",
 		});
-		plugin.apply(compiler as any);
+		plugin.apply(compiler);
 
 		simulateCompilation([{ resource: "/a.ts" }]);
 		simulateCompilation([{ resource: "/b.ts" }]);
@@ -153,7 +153,7 @@ describe("antiscalerNextPlugin", () => {
 			sessionId: "nx4",
 			outDir: "traces",
 		});
-		plugin.apply(compiler as any);
+		plugin.apply(compiler);
 
 		simulateCompilation([{ resource: "/same.ts" }]);
 		simulateCompilation([{ resource: "/same.ts" }]);
@@ -173,7 +173,7 @@ describe("antiscalerNextPlugin", () => {
 			sessionId: "nx5",
 			outDir: "my-traces",
 		});
-		plugin.apply(compiler as any);
+		plugin.apply(compiler);
 
 		return simulateDone().then(() => {
 			expect(existsSync(path.join(cwd, "my-traces", "nx5.json"))).toBe(true);

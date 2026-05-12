@@ -16,13 +16,13 @@ export default defineConfig({
 `;
 
 export function registerInitAction(): void {
-  const cwd = process.cwd();
-  const existing = findAntiscaleConfigPath(cwd);
-  if (existing) {
-    console.log(`${path.basename(existing)} already exists — nothing written.`);
-    return;
-  }
-  const dest = path.join(cwd, "antiscale.config.ts");
-  writeFileSync(dest, TEMPLATE);
-  console.log("Created antiscale.config.ts");
+	const cwd = process.cwd();
+	const existing = findAntiscaleConfigPath(cwd);
+	if (existing) {
+		console.log(`${path.basename(existing)} already exists — nothing written.`);
+		return;
+	}
+	const dest = path.join(cwd, "antiscale.config.ts");
+	writeFileSync(dest, TEMPLATE);
+	console.log("Created antiscale.config.ts");
 }
