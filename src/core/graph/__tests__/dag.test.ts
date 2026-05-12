@@ -49,4 +49,35 @@ describe("TaskGraph.toLevels", () => {
 		// toLevels("D") should only include D, not A/B/C
 		expect(g.toLevels("D")).toEqual([["D"]]);
 	});
+
+	it("self-loop: A -> A throws CycleError", () => {
+		const g = new TaskGraph();
+		g.addTask("A");
+		g.addDependency("A", "A");
+		expect(() => g.toLevels("A")).toThrow(CycleError);
+	});
+
+	it("level cache invalidated on addTask", () => {
+		const g = makeGraph({ A: ["B"] });
+		const first = g.toLevels("A");
+		g.addTask("C");
+		g.addDependency("A", "C");
+		const second = g.toLevels("A");
+		expect(second.flat()).toContain("C");
+		expect(first.flat()).not.toContain("C");
+	});
+
+	it("defensive copy: mutating returned array does not corrupt cache", () => {
+		const g = makeGraph({ A: ["B"] });
+		const first = g.toLevels("A");
+		first[0]?.push("INJECTED");
+		const second = g.toLevels("A");
+		expect(second.flat()).not.toContain("INJECTED");
+	});
+
+	it("addDependency to unknown tasks creates them implicitly", () => {
+		const g = new TaskGraph();
+		g.addDependency("X", "Y");
+		expect(g.toLevels("X")).toEqual([["Y"], ["X"]]);
+	});
 });

@@ -1,21 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { AntiscaleError, CliUsageError } from "../core/errors.js";
-
-interface ConcurrencyOpts {
-	concurrency?: string;
-}
-
-function parseConcurrency(opts: ConcurrencyOpts): number | undefined {
-	if (opts.concurrency === undefined) return undefined;
-	const n = Number.parseInt(opts.concurrency, 10);
-	if (!Number.isFinite(n) || n < 1) {
-		throw new CliUsageError(
-			`--concurrency must be a positive integer, got "${opts.concurrency}"`,
-		);
-	}
-	return n;
-}
+import { AntiscaleError } from "../core/errors.js";
+import type { ConcurrencyOpts } from "./parse-opts.js";
+import { parseConcurrency } from "./parse-opts.js";
 
 const program = new Command()
 	.name("antiscaler")
@@ -25,14 +12,27 @@ const program = new Command()
 program
 	.command("build")
 	.description("Run the build task")
-	.option(
-		"-c, --concurrency <n>",
-		"max tasks to run concurrently per DAG level",
-	)
-	.action(async (opts: ConcurrencyOpts) => {
-		const { registerBuildAction } = await import("./commands/build.js");
-		const concurrency = parseConcurrency(opts);
-		await registerBuildAction(concurrency !== undefined ? { concurrency } : {});
+	.option("-c, --concurrency <n>", "max tasks per DAG level")
+	.option("--scope <sessionId>", "restrict build to packages in trace")
+	.option("--trace <which>", "shorthand for --scope=last")
+	.action(
+		async (opts: ConcurrencyOpts & { scope?: string; trace?: string }) => {
+			const { registerBuildAction } = await import("./commands/build.js");
+			const concurrency = parseConcurrency(opts);
+			const scope = opts.scope ?? (opts.trace === "last" ? "last" : undefined);
+			await registerBuildAction({
+				...(concurrency !== undefined && { concurrency }),
+				...(scope !== undefined && { scope }),
+			});
+		},
+	);
+
+program
+	.command("trace")
+	.description("Run dev with tracing enabled (writes .antiscale/traces/)")
+	.action(async () => {
+		const { registerTraceAction } = await import("./commands/trace.js");
+		await registerTraceAction();
 	});
 
 program

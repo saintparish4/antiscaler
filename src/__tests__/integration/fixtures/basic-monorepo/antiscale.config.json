@@ -1,0 +1,7 @@
+{
+  "strategy": "adaptive",
+  "workspace": { "enabled": true },
+  "tasks": {
+    "build": { "dependsOn": [], "command": "node -e 0" }
+  }
+}

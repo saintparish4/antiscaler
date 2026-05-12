@@ -46,4 +46,10 @@ export const antiscaleConfigSchema = z.object({
 				.default("auto"),
 		})
 		.optional(),
+	performance: z
+		.object({
+			criticalPaths: z.array(z.string()).default([]),
+			lintOnlyForNonCritical: z.boolean().default(false),
+		})
+		.optional(),
 });

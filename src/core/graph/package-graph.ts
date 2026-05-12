@@ -102,6 +102,20 @@ export function tasksFromPackageGraph(
 			};
 		}
 	}
+
+	// Wire each top-level script meta-task to depend on all its workspace tasks
+	// so `antiscaler build` runs all `*:build` tasks in dependency order.
+	for (const script of scripts) {
+		const workspaceTasks = Object.keys(out).filter(
+			(name) => name.endsWith(`:${script}`) && !existing[name],
+		);
+		if (workspaceTasks.length > 0 && out[script] !== undefined) {
+			const existingDeps = out[script].dependsOn ?? [];
+			const newDeps = workspaceTasks.filter((t) => !existingDeps.includes(t));
+			out[script] = { ...out[script], dependsOn: [...existingDeps, ...newDeps] };
+		}
+	}
+
 	return out;
 }
 

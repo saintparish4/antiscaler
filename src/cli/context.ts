@@ -6,6 +6,7 @@ import { getChangedPackages } from "../core/cache/git-diff.js";
 import { loadConfig } from "../core/config/loader.js";
 import { detectProject } from "../core/detection/project.js";
 import type { RunOptions } from "../core/execution/runner.js";
+import { priorityFromConfig } from "../core/execution/scheduler.js";
 import {
 	loadPackageGraph,
 	tasksFromPackageGraph,
@@ -94,6 +95,9 @@ export function toRunOptions(
 	overrides: { concurrency?: number } = {},
 ): RunOptions {
 	const schedulerEnabled = ctx.config.scheduler?.policy !== undefined;
+	const derivedPriorityOf = schedulerEnabled
+		? priorityFromConfig(ctx.config, ctx.config.tasks)
+		: undefined;
 	return {
 		cwd: ctx.cwd,
 		cacheDir: ctx.cacheDir,
@@ -105,6 +109,9 @@ export function toRunOptions(
 			? { packageScopes: ctx.packageScopes }
 			: {}),
 		...(schedulerEnabled ? { useScheduler: true } : {}),
+		...(derivedPriorityOf !== undefined
+			? { priorityOf: derivedPriorityOf }
+			: {}),
 		...(overrides.concurrency !== undefined
 			? { concurrency: overrides.concurrency }
 			: {}),

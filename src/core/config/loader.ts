@@ -18,13 +18,17 @@ const CANDIDATES = [
 	"antiscale.config.js",
 	"buildflow.config.json",
 	"antiscale.config.json",
-];
+] as const;
+
+/** First matching config path under `cwd`, in the same order as `loadConfig` resolution. */
+export function findAntiscaleConfigPath(cwd: string): string | undefined {
+	return CANDIDATES.map((f) => path.join(cwd, f)).find(existsSync);
+}
 
 export async function loadConfig(
 	cwd: string = process.cwd(),
 ): Promise<ResolvedAntiscaleConfig> {
-	// 1. Find config file (first match wins)
-	const configPath = CANDIDATES.map((f) => path.join(cwd, f)).find(existsSync);
+	const configPath = findAntiscaleConfigPath(cwd);
 
 	let raw: unknown = {};
 

@@ -70,7 +70,9 @@ function collectExportedSurface(file: SourceFile): Map<string, string> {
 	const out = new Map<string, string>();
 	for (const decl of file.getExportedDeclarations()) {
 		const [name, nodes] = decl;
-		const sig = nodes.map((n) => n.getText()).join("\n");
+		const sig = nodes
+			.map((n) => n.getText().replace(/\s+/g, " ").trim())
+			.join("\n");
 		out.set(name, sig);
 	}
 	return out;
@@ -81,5 +83,6 @@ function textWithoutTrivia(src: string): string {
 		.replace(/\/\/.*$/gm, "")
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.replace(/\s+/g, " ")
+		.replace(/ +;/g, ";")
 		.trim();
 }

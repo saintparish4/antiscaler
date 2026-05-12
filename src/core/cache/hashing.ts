@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import fg from "fast-glob";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import fg from "fast-glob";
 
 export interface HashOptions {
 	/** When set, only files inside these package dirs are read. */

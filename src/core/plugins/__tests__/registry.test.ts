@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { TaskRunResult } from "../../execution/runner.js";
 import { PluginRegistry } from "../registry.js";
 import type { BuildPlugin } from "../types.js";
 
@@ -56,5 +57,52 @@ describe("PluginRegistry", () => {
 		reg.register(noop());
 		await reg.runOnDetect({ cwd: "/", pm: "pnpm", framework: null, tasks: {} });
 		expect(onError).toHaveBeenCalledWith(expect.any(Error), "bad", "onDetect");
+	});
+
+	it("runOnAfterExecute invokes hooks with task name and result", async () => {
+		const calls: Array<{ task: string; result: TaskRunResult }> = [];
+		const reg = new PluginRegistry(() => {});
+		reg.register({
+			name: "track",
+			hooks: {
+				onAfterExecute: (task, result) => {
+					calls.push({ task, result });
+				},
+			},
+		});
+		const mockResult: TaskRunResult = {
+			task: "build",
+			durationMs: 100,
+			cacheHit: false,
+		};
+		await reg.runOnAfterExecute("build", mockResult);
+		expect(calls).toHaveLength(1);
+		expect(calls[0]?.task).toBe("build");
+		expect(calls[0]?.result).toBe(mockResult);
+	});
+
+	it("runOnAfterExecute isolates plugin errors", async () => {
+		const onError = vi.fn();
+		const reg = new PluginRegistry(onError);
+		reg.register({
+			name: "bad",
+			hooks: {
+				onAfterExecute: () => {
+					throw new Error("after-boom");
+				},
+			},
+		});
+		const mockResult: TaskRunResult = {
+			task: "t",
+			durationMs: 0,
+			cacheHit: true,
+		};
+		await reg.runOnAfterExecute("t", mockResult);
+		expect(onError).toHaveBeenCalledWith(
+			expect.any(Error),
+			"bad",
+			"onAfterExecute",
+			"t",
+		);
 	});
 });

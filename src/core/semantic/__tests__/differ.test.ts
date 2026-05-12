@@ -29,4 +29,63 @@ describe("classifyChange", () => {
 		expect(r.classification).toBe("breaking");
 		expect(r.exportedSymbols.changed).toContain("add");
 	});
+
+	it("adding a new exported symbol is breaking", () => {
+		const r = classifyChange({
+			filePath: "x.ts",
+			before: "export const a = 1;",
+			after: "export const a = 1;\nexport const b = 2;",
+		});
+		expect(r.classification).toBe("breaking");
+		expect(r.exportedSymbols.added).toContain("b");
+	});
+
+	it("removing an exported symbol is breaking", () => {
+		const r = classifyChange({
+			filePath: "x.ts",
+			before: "export const a = 1;\nexport const b = 2;",
+			after: "export const a = 1;",
+		});
+		expect(r.classification).toBe("breaking");
+		expect(r.exportedSymbols.removed).toContain("b");
+	});
+
+	it("changing an exported type alias is breaking", () => {
+		const r = classifyChange({
+			filePath: "x.ts",
+			before: "export type Foo = { x: number };",
+			after: "export type Foo = { x: string };",
+		});
+		expect(r.classification).toBe("breaking");
+		expect(r.exportedSymbols.changed).toContain("Foo");
+	});
+
+	it("identical inputs produce non-impacting", () => {
+		const code = "export const a = 1;\nfunction internal() { return 2; }";
+		const r = classifyChange({
+			filePath: "x.ts",
+			before: code,
+			after: code,
+		});
+		expect(r.classification).toBe("non-impacting");
+	});
+
+	it("whitespace-only change is non-impacting", () => {
+		const r = classifyChange({
+			filePath: "x.ts",
+			before: "export const a = 1;",
+			after: "export const a   =   1 ;",
+		});
+		expect(r.classification).toBe("non-impacting");
+	});
+
+	it("changing an exported interface is breaking", () => {
+		const r = classifyChange({
+			filePath: "x.ts",
+			before: "export interface Bar { x: number; }",
+			after: "export interface Bar { x: number; y: string; }",
+		});
+		expect(r.classification).toBe("breaking");
+		expect(r.exportedSymbols.changed).toContain("Bar");
+	});
 });
