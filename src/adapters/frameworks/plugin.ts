@@ -14,12 +14,12 @@ export const wrapFrameworkAsPlugin = (a: FrameworkAdapter): BuildPlugin => ({
 			if (!(await Promise.resolve(a.detect(ctx.cwd)))) return;
 			ctx.framework = ctx.framework ?? a.name;
 			// Auto-register dev / build commands when the user hasn't defined them.
-			if (!ctx.tasks.dev?.command) {
-				ctx.tasks.dev = { ...ctx.tasks.dev, command: a.devCommand() };
+			if (!ctx.tasks["dev"]?.command) {
+				ctx.tasks["dev"] = { ...ctx.tasks["dev"], command: a.devCommand() };
 			}
-			if (!ctx.tasks.build?.command) {
-				ctx.tasks.build = {
-					...ctx.tasks.build,
+			if (!ctx.tasks["build"]?.command) {
+				ctx.tasks["build"] = {
+					...ctx.tasks["build"],
 					command: a.buildCommand(),
 				};
 			}

@@ -11,10 +11,11 @@ import type { RuntimeInfo } from "../../types/index.js";
  */
 export function detectRuntime(): RuntimeAdapter {
 	// Check process globals first (zero cost -- no subprocesses)
-	if (typeof (globalThis as Record<string, unknown>).Bun !== "undefined") {
+	const g = globalThis as Record<string, unknown>;
+	if (typeof g["Bun"] !== "undefined") {
 		return bunAdapter;
 	}
-	if (typeof (globalThis as Record<string, unknown>).Deno !== "undefined") {
+	if (typeof g["Deno"] !== "undefined") {
 		return denoAdapter;
 	}
 	// Fallback: probe via subprocess (covers cases like running under node

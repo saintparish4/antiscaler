@@ -12,14 +12,14 @@ export const nextAdapter: FrameworkAdapter = {
 				string,
 				unknown
 			>;
-			const deps = json.dependencies as Record<string, unknown> | undefined;
-			const devDeps = json.devDependencies as
+			const deps = json["dependencies"] as Record<string, unknown> | undefined;
+			const devDeps = json["devDependencies"] as
 				| Record<string, unknown>
 				| undefined;
-			const peerDeps = json.peerDependencies as
+			const peerDeps = json["peerDependencies"] as
 				| Record<string, unknown>
 				| undefined;
-			return Boolean(deps?.next || devDeps?.next || peerDeps?.next);
+			return Boolean(deps?.["next"] || devDeps?.["next"] || peerDeps?.["next"]);
 		} catch {
 			return false;
 		}

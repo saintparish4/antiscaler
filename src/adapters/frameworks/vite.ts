@@ -14,8 +14,8 @@ export const viteAdapter: FrameworkAdapter = {
 				unknown
 			>;
 			const deps = {
-				...(pkg.dependencies as Record<string, unknown> | undefined),
-				...(pkg.devDependencies as Record<string, unknown> | undefined),
+				...(pkg["dependencies"] as Record<string, unknown> | undefined),
+				...(pkg["devDependencies"] as Record<string, unknown> | undefined),
 			};
 			return "vite" in deps;
 		} catch {
