@@ -18,7 +18,9 @@ afterEach(() => {
 });
 
 // Derive the compiler type from the plugin without exporting internals.
-type PluginCompiler = Parameters<ReturnType<typeof antiscalerNextPlugin>["apply"]>[0];
+type PluginCompiler = Parameters<
+	ReturnType<typeof antiscalerNextPlugin>["apply"]
+>[0];
 
 function mockCompiler(context: string) {
 	const afterCompileHooks: Array<(compilation: unknown) => void> = [];

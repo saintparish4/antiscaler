@@ -1,5 +1,5 @@
-import { loadPackageGraph } from "../../core/graph/package-graph.js";
 import { runTasksWithDeps } from "../../core/execution/runner.js";
+import { loadPackageGraph } from "../../core/graph/package-graph.js";
 import { loadTrace, tracedPackages } from "../../core/scope/trace-loader.js";
 import { createContext, toRunOptions } from "../context.js";
 
