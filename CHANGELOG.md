@@ -5,6 +5,19 @@ All notable changes to antiscaler are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/saintparish4/antiscaler/compare/v0.3.0...v0.4.0) (2026-05-21)
+
+
+### Features
+
+* trace-driven lint optimization, route wiring, and stability fixes ([836304c](https://github.com/saintparish4/antiscaler/commit/836304cd2aef16c6df06df82b7bc7e1d3e4bb35c))
+* **tracer:** add Next/Vite trace plugins and scoped build support ([1b0a950](https://github.com/saintparish4/antiscaler/commit/1b0a95014fb298fcb61e33eb79950a724b57b8fb))
+
+
+### Bug Fixes
+
+* fix:  ([11acf69](https://github.com/saintparish4/antiscaler/commit/11acf69377ac4e76f1eb33ebe1e1c2ea6266bb78))
+
 ## [Unreleased]
 
 ## [0.3.0] - 2026-05-04
