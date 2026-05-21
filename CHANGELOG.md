@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-05-21
+
+### Fixed
+
+- README updated to reflect current 0.5.x feature set and CLI reference.
+
 ## [0.5.0] - 2026-05-21
 
 ### Added
@@ -136,7 +142,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `antiscaler --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/saintparish4/antiscaler/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/saintparish4/antiscaler/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/saintparish4/antiscaler/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/saintparish4/antiscaler/compare/v0.2.0...v0.3.0
