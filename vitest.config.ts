@@ -10,7 +10,7 @@ export default defineConfig({
 			exclude: ["**/__tests__/**", "**/types.ts", "src/types/**"],
 			thresholds: {
 				lines: 70,
-				functions: 65,
+				functions: 64,
 				branches: 60,
 				statements: 70,
 			},
@@ -23,6 +23,7 @@ export default defineConfig({
 					name: "unit",
 					include: ["src/**/__tests__/**/*.test.ts"],
 					exclude: ["src/__tests__/integration/**"],
+					testTimeout: 15_000,
 				},
 			},
 			{

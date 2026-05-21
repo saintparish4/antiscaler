@@ -21,6 +21,10 @@ export class TaskGraph {
 		this.levelCache.clear();
 	}
 
+	getDependencies(task: string): ReadonlySet<string> {
+		return this.deps.get(task) ?? new Set();
+	}
+
 	toLevels(target: string): string[][] {
 		const cached = this.levelCache.get(target);
 		if (cached !== undefined) {

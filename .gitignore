@@ -9,6 +9,7 @@ dist/
 # Antiscale cache (plan: content cache lives under project)
 .antiscale/
 .cursor/
+.claude/
 
 
 # Tests & coverage

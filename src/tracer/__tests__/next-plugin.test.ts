@@ -17,35 +17,38 @@ afterEach(() => {
 	tmpDirs.length = 0;
 });
 
-function mockCompiler(context: string) {
-	const hooks: {
-		afterCompile: Array<(compilation: unknown) => void>;
-		done: Array<() => Promise<void>>;
-	} = { afterCompile: [], done: [] };
+// Derive the compiler type from the plugin without exporting internals.
+type PluginCompiler = Parameters<ReturnType<typeof antiscalerNextPlugin>["apply"]>[0];
 
-	return {
-		compiler: {
-			context,
-			hooks: {
-				afterCompile: {
-					tap: (_name: string, cb: (c: unknown) => void) => {
-						hooks.afterCompile.push(cb);
-					},
+function mockCompiler(context: string) {
+	const afterCompileHooks: Array<(compilation: unknown) => void> = [];
+	const doneHooks: Array<() => Promise<void>> = [];
+
+	const rawCompiler = {
+		context,
+		hooks: {
+			afterCompile: {
+				tap: (_name: string, cb: (c: unknown) => void) => {
+					afterCompileHooks.push(cb);
 				},
-				done: {
-					tapPromise: (_name: string, cb: () => Promise<void>) => {
-						hooks.done.push(cb);
-					},
+			},
+			done: {
+				tapPromise: (_name: string, cb: () => Promise<void>) => {
+					doneHooks.push(cb);
 				},
 			},
 		},
+	};
+
+	return {
+		compiler: rawCompiler as unknown as PluginCompiler,
 		simulateCompilation(modules: Array<{ resource?: string }>) {
-			for (const cb of hooks.afterCompile) {
+			for (const cb of afterCompileHooks) {
 				cb({ modules });
 			}
 		},
 		async simulateDone() {
-			for (const cb of hooks.done) {
+			for (const cb of doneHooks) {
 				await cb();
 			}
 		},
@@ -177,6 +180,55 @@ describe("antiscalerNextPlugin", () => {
 
 		return simulateDone().then(() => {
 			expect(existsSync(path.join(cwd, "my-traces", "nx5.json"))).toBe(true);
+		});
+	});
+
+	it("derives routes from page file paths when no entrypoints provided", () => {
+		const cwd = makeTmpDir();
+		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
+		const plugin = antiscalerNextPlugin({ sessionId: "nx6", outDir: "traces" });
+		plugin.apply(compiler);
+
+		simulateCompilation([
+			{ resource: "/app/pages/index.tsx" },
+			{ resource: "/app/pages/about.tsx" },
+			{ resource: "/app/pages/_app.tsx" }, // should be skipped
+			{ resource: "/app/pages/_document.tsx" }, // should be skipped
+			{ resource: "/app/src/utils.ts" }, // not a page
+		]);
+
+		return simulateDone().then(async () => {
+			const trace: TraceFile = JSON.parse(
+				await readFile(path.join(cwd, "traces", "nx6.json"), "utf8"),
+			);
+			const routePaths = trace.routes.map((r) => r.path);
+			expect(routePaths).toContain("/"); // index → /
+			expect(routePaths).toContain("/about"); // about → /about
+			expect(routePaths).not.toContain("/_app");
+			expect(routePaths).not.toContain("/_document");
+		});
+	});
+
+	it("derives routes for app-router page.tsx files", () => {
+		const cwd = makeTmpDir();
+		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
+		const plugin = antiscalerNextPlugin({ sessionId: "nx7", outDir: "traces" });
+		plugin.apply(compiler);
+
+		simulateCompilation([
+			{ resource: "/app/app/checkout/page.tsx" },
+			{ resource: "/app/app/checkout/layout.tsx" }, // should be skipped
+			{ resource: "/app/app/page.tsx" }, // root page → /
+		]);
+
+		return simulateDone().then(async () => {
+			const trace: TraceFile = JSON.parse(
+				await readFile(path.join(cwd, "traces", "nx7.json"), "utf8"),
+			);
+			const routePaths = trace.routes.map((r) => r.path);
+			expect(routePaths).toContain("/checkout");
+			expect(routePaths).toContain("/");
+			expect(routePaths).not.toContain("/checkout/layout");
 		});
 	});
 });

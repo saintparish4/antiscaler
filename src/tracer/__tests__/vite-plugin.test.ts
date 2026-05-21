@@ -122,4 +122,99 @@ describe("antiscalerVitePlugin", () => {
 			expect(trace.modules).toHaveLength(1);
 		});
 	});
+
+	it("generateBundle populates routes from entry chunks", () => {
+		const cwd = makeTmpDir();
+		const plugin = antiscalerVitePlugin({ sessionId: "s6", outDir: "traces" });
+		plugin.configResolved?.({ root: cwd });
+
+		plugin.generateBundle?.(undefined, {
+			"checkout-abc123.js": {
+				type: "chunk",
+				isEntry: true,
+				facadeModuleId: `${cwd}/pages/checkout.tsx`,
+				moduleIds: [
+					`${cwd}/pages/checkout.tsx`,
+					`${cwd}/src/components/CartSummary.tsx`,
+					`${cwd}/node_modules/react/index.js`,
+				],
+			},
+			"about-def456.js": {
+				type: "chunk",
+				isEntry: true,
+				facadeModuleId: `${cwd}/pages/about.tsx`,
+				moduleIds: [`${cwd}/pages/about.tsx`],
+			},
+			"logo.svg": {
+				type: "asset",
+			},
+		});
+
+		return plugin.closeBundle?.().then(async () => {
+			const trace: TraceFile = JSON.parse(
+				await readFile(path.join(cwd, "traces", "s6.json"), "utf8"),
+			);
+			const routePaths = trace.routes.map((r) => r.path);
+			expect(routePaths).toContain("/checkout");
+			expect(routePaths).toContain("/about");
+
+			const checkout = trace.routes.find((r) => r.path === "/checkout");
+			expect(checkout?.modules).toContain(`${cwd}/pages/checkout.tsx`);
+			expect(checkout?.modules).toContain(
+				`${cwd}/src/components/CartSummary.tsx`,
+			);
+			// node_modules must be excluded
+			expect(checkout?.modules).not.toContain(
+				`${cwd}/node_modules/react/index.js`,
+			);
+		});
+	});
+
+	it("generateBundle skips non-entry chunks and asset chunks", () => {
+		const cwd = makeTmpDir();
+		const plugin = antiscalerVitePlugin({ sessionId: "s7", outDir: "traces" });
+		plugin.configResolved?.({ root: cwd });
+
+		plugin.generateBundle?.(undefined, {
+			"vendor-abc.js": {
+				type: "chunk",
+				isEntry: false, // not an entry — skip
+				facadeModuleId: `${cwd}/pages/home.tsx`,
+				moduleIds: [`${cwd}/pages/home.tsx`],
+			},
+			"style.css": {
+				type: "asset", // asset — skip
+			},
+		});
+
+		return plugin.closeBundle?.().then(async () => {
+			const trace: TraceFile = JSON.parse(
+				await readFile(path.join(cwd, "traces", "s7.json"), "utf8"),
+			);
+			expect(trace.routes).toHaveLength(0);
+		});
+	});
+
+	it("generateBundle ignores entry chunks with no matching route convention", () => {
+		const cwd = makeTmpDir();
+		const plugin = antiscalerVitePlugin({ sessionId: "s8", outDir: "traces" });
+		plugin.configResolved?.({ root: cwd });
+
+		// facadeModuleId is under src/ but NOT under pages/routes/views
+		plugin.generateBundle?.(undefined, {
+			"main-abc.js": {
+				type: "chunk",
+				isEntry: true,
+				facadeModuleId: `${cwd}/src/main.tsx`,
+				moduleIds: [`${cwd}/src/main.tsx`],
+			},
+		});
+
+		return plugin.closeBundle?.().then(async () => {
+			const trace: TraceFile = JSON.parse(
+				await readFile(path.join(cwd, "traces", "s8.json"), "utf8"),
+			);
+			expect(trace.routes).toHaveLength(0);
+		});
+	});
 });

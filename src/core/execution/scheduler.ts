@@ -40,14 +40,15 @@ export async function runScheduled(
 		remainingDeps.set(t, 0);
 		dependents.set(t, new Set());
 	}
-	// Reconstruct dep counts from levels: a task in level i depends on its
-	// immediate upstream tasks (those reachable in levels < i).
-	for (let i = 1; i < levels.length; i++) {
-		for (const t of levels[i] ?? []) {
-			for (const upstream of levels[i - 1] ?? []) {
+	// Walk actual graph edges rather than approximating via level boundaries.
+	// This lets tasks with no shared dependency start in true parallel instead
+	// of being gated on a whole level wave finishing.
+	for (const t of allTasks) {
+		for (const dep of graph.getDependencies(t)) {
+			if (remainingDeps.has(dep)) {
+				// dep is in our subgraph: t depends on dep, so dep has t as a dependent
 				remainingDeps.set(t, (remainingDeps.get(t) ?? 0) + 1);
-				const upstreamDependents = dependents.get(upstream);
-				upstreamDependents?.add(t);
+				dependents.get(dep)?.add(t);
 			}
 		}
 	}

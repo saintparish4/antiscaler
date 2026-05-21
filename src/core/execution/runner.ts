@@ -31,12 +31,19 @@ export interface RunOptions {
 	plugins: PluginRegistry;
 	/** When set, hashTaskInputs only reads files inside these dirs. */
 	packageScopes?: string[];
+	/**
+	 * When set, only tasks passing this predicate are executed; others are
+	 * recorded as skipped (durationMs 0, cacheHit false, skipped true).
+	 */
+	taskFilter?: (taskName: string) => boolean;
 }
 
 export interface TaskRunResult {
 	task: string;
 	durationMs: number;
 	cacheHit: boolean;
+	/** True when the task was filtered out by taskFilter (not actually run). */
+	skipped?: boolean;
 }
 
 export function defaultConcurrency(): number {
@@ -91,6 +98,10 @@ async function runOneTask(
 	cache: CacheFile,
 	executor: TaskExecutor,
 ): Promise<TaskRunResult> {
+	if (options.taskFilter && !options.taskFilter(taskName)) {
+		return { task: taskName, durationMs: 0, cacheHit: false, skipped: true };
+	}
+
 	const taskCfg = options.tasks[taskName] ?? {};
 	const patterns = taskCfg.inputs ?? [];
 	const isStrict = options.config.strategy === "strict";

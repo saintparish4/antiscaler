@@ -76,6 +76,7 @@ export function tasksFromPackageGraph(
 	graph: PackageGraph,
 	existing: Record<string, TaskConfig>,
 	scripts: ReadonlyArray<string> = ["build", "test", "lint"],
+	pm = "pnpm",
 ): Record<string, TaskConfig> {
 	const out: Record<string, TaskConfig> = { ...existing };
 	for (const pkg of graph.packages) {
@@ -91,7 +92,7 @@ export function tasksFromPackageGraph(
 				}
 			}
 			out[taskName] = {
-				command: `pnpm --filter ${pkg.manifest.name} run ${script}`,
+				command: `${pm} --filter ${pkg.manifest.name} run ${script}`,
 				dependsOn,
 				inputs: [
 					path.posix.join(

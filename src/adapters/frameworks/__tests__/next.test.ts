@@ -72,11 +72,11 @@ describe("nextAdapter.detect", () => {
 });
 
 describe("nextAdapter commands", () => {
-	it("devCommand returns script name dev", () => {
-		expect(nextAdapter.devCommand()).toBe("dev");
+	it("devCommand returns 'next dev'", () => {
+		expect(nextAdapter.devCommand()).toBe("next dev");
 	});
-	it("buildCommand returns script name build", () => {
-		expect(nextAdapter.buildCommand()).toBe("build");
+	it("buildCommand returns 'next build'", () => {
+		expect(nextAdapter.buildCommand()).toBe("next build");
 	});
 });
 
@@ -96,7 +96,7 @@ describe("nextPlugin", () => {
 		await nextPlugin.hooks?.onDetect?.(ctx);
 
 		expect(ctx.tasks["web:build"]).toEqual({
-			command: "pnpm --filter web run build",
+			command: `${ctx.pm} --filter web run build`,
 			inputs: ["apps/web/**/*.{ts,tsx,js,jsx,json,css}"],
 		});
 	});

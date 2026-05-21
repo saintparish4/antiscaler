@@ -1,13 +1,21 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { AntiscaleError } from "../core/errors.js";
 import type { ConcurrencyOpts } from "./parse-opts.js";
 import { parseConcurrency } from "./parse-opts.js";
 
+const _dir = dirname(fileURLToPath(import.meta.url));
+const _pkg = JSON.parse(
+	readFileSync(join(_dir, "..", "package.json"), "utf8"),
+) as { version: string };
+
 const program = new Command()
 	.name("antiscaler")
 	.description("Adaptive dev orchestration CLI")
-	.version("0.1.3");
+	.version(_pkg.version);
 
 program
 	.command("build")
@@ -33,6 +41,16 @@ program
 	.action(async () => {
 		const { registerTraceAction } = await import("./commands/trace.js");
 		await registerTraceAction();
+	});
+
+program
+	.command("trace analyze [sessionId]")
+	.description(
+		"Analyze a trace file — show modules, routes, and package breakdown (default: last session)",
+	)
+	.action(async (sessionId?: string) => {
+		const { registerTraceAnalyzeAction } = await import("./commands/trace.js");
+		await registerTraceAnalyzeAction(sessionId);
 	});
 
 program

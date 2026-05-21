@@ -2,7 +2,7 @@ import { genericAdapter } from "../adapters/frameworks/generic.js";
 import { nextAdapter, nextPlugin } from "../adapters/frameworks/next.js";
 import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
 import { viteAdapter } from "../adapters/frameworks/vite.js";
-import { getChangedPackages } from "../core/cache/git-diff.js";
+import { getChangedFiles, getChangedPackages } from "../core/cache/git-diff.js";
 import { loadConfig } from "../core/config/loader.js";
 import { detectProject } from "../core/detection/project.js";
 import type { RunOptions } from "../core/execution/runner.js";
@@ -13,21 +13,33 @@ import {
 } from "../core/graph/package-graph.js";
 import { buildGraph } from "../core/graph/planner.js";
 import { PluginRegistry } from "../core/plugins/registry.js";
+import { isCriticalChange } from "../core/scope/critical-path.js";
+import { loadTrace } from "../core/scope/trace-loader.js";
 import type { AntiscaleContext } from "../types/index.js";
 
 export async function createContext(
 	cwd: string = process.cwd(),
 ): Promise<AntiscaleContext> {
-	const config = await loadConfig(cwd);
+	// Detect PM/runtime/framework once; reuse throughout context construction.
+	const [rawConfig, { pm, runtime, framework }] = await Promise.all([
+		loadConfig(cwd),
+		detectProject(cwd),
+	]);
+
+	let config = rawConfig;
 
 	let pkgGraph: Awaited<ReturnType<typeof loadPackageGraph>> | undefined;
 	if (config.workspace?.enabled) {
 		pkgGraph = await loadPackageGraph(cwd);
-		config.tasks = tasksFromPackageGraph(
-			pkgGraph,
-			config.tasks,
-			config.workspace.scripts,
-		);
+		config = {
+			...config,
+			tasks: tasksFromPackageGraph(
+				pkgGraph,
+				config.tasks,
+				config.workspace.scripts,
+				pm.name,
+			),
+		};
 	}
 
 	let packageScopes: string[] | undefined;
@@ -53,7 +65,34 @@ export async function createContext(
 		}
 	}
 
-	const { pm, runtime, framework } = await detectProject(cwd);
+	// If lintOnlyForNonCritical is enabled, check whether changed files touch
+	// any critical routes. If not, restrict execution to lint-named tasks only.
+	let lintOnly = false;
+	const perf = config.performance;
+	if (perf?.lintOnlyForNonCritical && (perf.criticalPaths?.length ?? 0) > 0) {
+		const trace = await loadTrace(cwd, "last").catch(() => null);
+		if (trace !== null) {
+			const changedFiles = await getChangedFiles({
+				cwd,
+				...(config.git?.baseRef !== undefined
+					? { baseRef: config.git.baseRef }
+					: {}),
+			}).catch(() => null);
+			if (changedFiles !== null) {
+				lintOnly = !isCriticalChange(
+					changedFiles,
+					trace,
+					perf.criticalPaths ?? [],
+				);
+				if (lintOnly) {
+					process.stderr.write(
+						"[antiscaler] No critical-path changes detected — running lint tasks only\n",
+					);
+				}
+			}
+		}
+	}
+
 	const cacheDir = config.cache.directory;
 
 	const plugins = new PluginRegistry();
@@ -81,6 +120,7 @@ export async function createContext(
 		cacheDir,
 		plugins,
 		...(packageScopes !== undefined ? { packageScopes } : {}),
+		...(lintOnly ? { lintOnly: true } : {}),
 	};
 }
 
@@ -114,6 +154,9 @@ export function toRunOptions(
 			: {}),
 		...(overrides.concurrency !== undefined
 			? { concurrency: overrides.concurrency }
+			: {}),
+		...(ctx.lintOnly
+			? { taskFilter: (name: string) => /lint/i.test(name) }
 			: {}),
 	};
 }

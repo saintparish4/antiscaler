@@ -34,14 +34,18 @@ export function printInsights(summary: InsightSummary): void {
 	console.log("-".repeat(header.length));
 
 	for (const r of results) {
-		const dur = r.cacheHit ? "-" : `${r.durationMs}ms`;
-		const status = r.cacheHit
+		const dur = r.skipped || r.cacheHit ? "-" : `${r.durationMs}ms`;
+		const status = r.skipped
 			? isTTY
-				? pc.green("HIT")
-				: "HIT"
-			: isTTY
-				? pc.red("MISS")
-				: "MISS";
+				? pc.dim("SKIP")
+				: "SKIP"
+			: r.cacheHit
+				? isTTY
+					? pc.green("HIT")
+					: "HIT"
+				: isTTY
+					? pc.red("MISS")
+					: "MISS";
 		console.log(`${col(r.task, maxNameLen)} ${dur.padEnd(10)} ${status}`);
 	}
 

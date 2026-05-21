@@ -7,7 +7,6 @@
  */
 
 import type { SourceFile } from "ts-morph";
-import { Project } from "ts-morph";
 
 export type SemanticClass = "non-impacting" | "internal" | "breaking";
 
@@ -27,7 +26,12 @@ export interface ClassifyResult {
 	};
 }
 
-export function classifyChange(input: ClassifyInput): ClassifyResult {
+export async function classifyChange(
+	input: ClassifyInput,
+): Promise<ClassifyResult> {
+	// Lazy import keeps ts-morph (~50MB) out of the startup critical path.
+	// Only loaded when semantic diff is actually needed.
+	const { Project } = await import("ts-morph");
 	const project = new Project({ useInMemoryFileSystem: true });
 	const beforeFile = project.createSourceFile("__before.ts", input.before);
 	const afterFile = project.createSourceFile("__after.ts", input.after);

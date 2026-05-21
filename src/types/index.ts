@@ -21,6 +21,8 @@ export type CacheConfig = ResolvedAntiscaleConfig["cache"];
 export interface TaskGraph {
 	addTask(name: string): void;
 	addDependency(task: string, dep: string): void;
+	/** Returns the direct dependencies of a task (tasks it depends ON). */
+	getDependencies(task: string): ReadonlySet<string>;
 	toLevels(target: string): string[][];
 }
 
@@ -39,4 +41,10 @@ export interface AntiscaleContext {
 	cacheDir: string;
 	plugins: PluginRegistry;
 	packageScopes?: string[];
+	/**
+	 * True when lintOnlyForNonCritical is enabled and the current changes do
+	 * not affect any critical route. Commands should restrict execution to
+	 * lint tasks only when this flag is set.
+	 */
+	lintOnly?: boolean;
 }

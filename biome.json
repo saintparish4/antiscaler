@@ -62,7 +62,8 @@
       "complexity": {
         "useDateNow": "error",
         "noUselessSwitchCase": "warn",
-        "noUselessTypeConstraint": "warn"
+        "noUselessTypeConstraint": "warn",
+        "useLiteralKeys": "off"
       },
       "correctness": {
         "noUnusedImports": "warn",

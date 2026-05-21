@@ -24,8 +24,8 @@ export const nextAdapter: FrameworkAdapter = {
 			return false;
 		}
 	},
-	devCommand: () => "dev",
-	buildCommand: () => "build",
+	devCommand: () => "next dev",
+	buildCommand: () => "next build",
 };
 
 export const nextPlugin: BuildPlugin = {
@@ -37,7 +37,7 @@ export const nextPlugin: BuildPlugin = {
 				const taskName = `${app}:build`;
 				if (!ctx.tasks[taskName]) {
 					ctx.tasks[taskName] = {
-						command: `pnpm --filter ${app} run build`,
+						command: `${ctx.pm} --filter ${app} run build`,
 						inputs: [`apps/${app}/**/*.{ts,tsx,js,jsx,json,css}`],
 					};
 				}

@@ -1,6 +1,6 @@
 {
   "name": "antiscaler",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Adaptive dev orchestration CLI — task DAG, content caching, runtime detection",
   "type": "module",
   "main": "dist/index.js",
@@ -49,7 +49,6 @@
   "author": "Bluesky Labs",
   "license": "MIT",
   "dependencies": {
-    "@vitest/coverage-v8": "^4.1.6",
     "commander": "^14.0.3",
     "execa": "^9.6.1",
     "fast-glob": "^3.3.3",
@@ -61,6 +60,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.14",
+    "@vitest/coverage-v8": "^4.1.6",
     "@types/node": "^25.5.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",

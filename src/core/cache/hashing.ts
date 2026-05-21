@@ -10,11 +10,20 @@ export interface HashOptions {
 	parallel?: number;
 }
 
+function assertSafePattern(pattern: string): void {
+	if (path.isAbsolute(pattern) || pattern.startsWith("..")) {
+		throw new Error(
+			`Unsafe glob pattern "${pattern}": patterns must be relative and must not traverse outside the project root.`,
+		);
+	}
+}
+
 export async function hashTaskInputs(
 	cwd: string,
 	patterns: string[],
 	options: HashOptions = {},
 ): Promise<string> {
+	for (const p of patterns) assertSafePattern(p);
 	const files = (
 		await fg(patterns, {
 			cwd,

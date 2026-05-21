@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CacheError } from "../errors.js";
@@ -18,13 +18,11 @@ const CACHE_FILENAME = "cache.json";
 
 export async function readCache(cacheDir: string): Promise<CacheFile> {
 	const filePath = path.join(cacheDir, CACHE_FILENAME);
-	if (!existsSync(filePath)) {
-		return { tasks: {} };
-	}
 	try {
 		const raw = await readFile(filePath, "utf8");
 		return JSON.parse(raw) as CacheFile;
 	} catch (err) {
+		if ((err as NodeJS.ErrnoException).code === "ENOENT") return { tasks: {} };
 		throw new CacheError(
 			`Failed to read cache at "${filePath}": ${String(err)}`,
 			{ cause: err },
@@ -71,13 +69,11 @@ export function writeCacheSync(cacheDir: string, cache: CacheFile): void {
  */
 export function readCacheSync(cacheDir: string): CacheFile {
 	const filePath = path.join(cacheDir, CACHE_FILENAME);
-	if (!existsSync(filePath)) {
-		return { tasks: {} };
-	}
 	try {
 		const raw = readFileSync(filePath, "utf8");
 		return JSON.parse(raw) as CacheFile;
 	} catch (err) {
+		if ((err as NodeJS.ErrnoException).code === "ENOENT") return { tasks: {} };
 		throw new CacheError(
 			`Failed to read cache at "${filePath}": ${String(err)}`,
 			{ cause: err },
