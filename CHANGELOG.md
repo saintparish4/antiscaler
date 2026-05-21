@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-21
+
+### Added
+
+- `antiscaler trace analyze [sessionId]` subcommand — prints modules, routes,
+  and per-package module counts from a recorded trace session.
+- Route detection in the Next.js webpack plugin: derives page routes from
+  webpack entrypoints/chunkGraph, with a `deriveRoutesFromFiles` fallback that
+  correctly handles both pages-router and app-router layouts.
+- Route detection in the Vite plugin via the `generateBundle` hook; entry
+  chunks are mapped to URL paths using the same derivation logic.
+- `getDependencies(task)` method on `TaskGraph` — exposes real DAG edges for
+  external consumers and for the scheduler's dependency walk.
+- `taskFilter` option in `RunOptions` — callers can pass a predicate to skip
+  tasks without removing them from the graph (skipped tasks are reported as
+  SKIP in the insight output).
+- `lintOnly` mode: when `performance.lintOnlyForNonCritical` is enabled and no
+  changed file touches a critical route, execution is restricted to lint-named
+  tasks and a notice is written to stderr.
+- pnpm workspace detection now also recognises `pnpm-workspace.yaml` (not just
+  `pnpm-lock.yaml`), fixing PM detection in freshly cloned or CI monorepos.
+
+### Fixed
+
+- Commander.js crash on startup ("cannot add command 'trace' as already have
+  command 'trace'") — `trace analyze` is now registered as a proper subcommand
+  of the `trace` parent command instead of a second top-level command.
+- Scheduler bipartite bug: the event-driven scheduler previously created false
+  dependencies between tasks at consecutive DAG levels. It now walks real
+  `getDependencies()` edges instead of a level-boundary approximation, restoring
+  true parallelism.
+- `exactOptionalPropertyTypes` violation in `context.ts` — optional git
+  `baseRef` is now spread conditionally instead of being passed directly.
+- Biome `useLiteralKeys` vs TypeScript `noPropertyAccessFromIndexSignature`
+  conflict resolved by disabling `useLiteralKeys` in biome.json; index-
+  signature types continue to use bracket notation as the compiler requires.
+- Integration test timeout on WSL/Windows — unit test timeout raised to 15 s.
+
+## [0.4.0] - 2026-05-04
+
+### Added
+
+- Git-diff affected packages now narrow content hashing: changed workspace
+  packages are passed as `packageScopes` from context into `RunOptions` and
+  `hashTaskInputs`, so unchanged packages can cache-hit without re-reading all
+  matched inputs.
+
+### Changed
+
+- `scheduler.policy` in config enables the event-driven scheduler (`useScheduler`
+  in run options) without requiring a CLI flag.
+
 ## [0.3.0] - 2026-05-04
 
 ### Added
@@ -84,7 +136,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `antiscaler --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/saintparish4/antiscaler/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/saintparish4/antiscaler/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/saintparish4/antiscaler/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/saintparish4/antiscaler/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/saintparish4/antiscaler/compare/v0.1.1...v0.1.2
