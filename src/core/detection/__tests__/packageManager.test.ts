@@ -22,6 +22,12 @@ describe("detectPackageManager", () => {
 		expect(detectPackageManager(dir).name).toBe("pnpm");
 	});
 
+	it("detects pnpm when pnpm-workspace.yaml exists (no lockfile)", () => {
+		const dir = makeTmpDir();
+		writeFileSync(path.join(dir, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n");
+		expect(detectPackageManager(dir).name).toBe("pnpm");
+	});
+
 	it("detects yarn when yarn.lock exists", () => {
 		const dir = makeTmpDir();
 		writeFileSync(path.join(dir, "yarn.lock"), "");

@@ -35,7 +35,7 @@ program
 		},
 	);
 
-program
+const traceCmd = program
 	.command("trace")
 	.description("Run dev with tracing enabled (writes .antiscale/traces/)")
 	.action(async () => {
@@ -43,8 +43,8 @@ program
 		await registerTraceAction();
 	});
 
-program
-	.command("trace analyze [sessionId]")
+traceCmd
+	.command("analyze [sessionId]")
 	.description(
 		"Analyze a trace file — show modules, routes, and package breakdown (default: last session)",
 	)
