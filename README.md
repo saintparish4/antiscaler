@@ -19,7 +19,7 @@ without forcing a framework migration.
 
 ## Features
 
-**Active in the CLI today (0.5.0)**
+**Active in the CLI today (0.5.1)**
 
 - **Auto-detection** — Detects your package manager (npm / yarn / pnpm via
   lockfile or `pnpm-workspace.yaml`), runtime (Node / Bun / Deno), and
@@ -269,8 +269,8 @@ npm install -D antiscaler@next
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). All PRs must pass `pnpm lint` (type
-check + tests) and `pnpm build` before review.
+See [CONTRIBUTING.md](./CONTRIBUTING.md). All PRs must pass `pnpm lint` (Biome
+check + type check) and `pnpm build` before review.
 
 ---
 
