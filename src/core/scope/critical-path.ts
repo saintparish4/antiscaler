@@ -17,6 +17,9 @@ export function isCriticalChange(
 
 function matchRoute(pattern: string, route: string): boolean {
 	if (pattern === route) return true;
-	if (pattern.endsWith("/*")) return route.startsWith(pattern.slice(0, -2));
+	if (pattern.endsWith("/*")) {
+		const prefix = pattern.slice(0, -2);
+		return route === prefix || route.startsWith(prefix + "/");
+	}
 	return false;
 }

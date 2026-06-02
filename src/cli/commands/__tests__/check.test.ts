@@ -46,6 +46,29 @@ describe("registerCheckAction", () => {
 		}
 	});
 
+	it("succeeds when all dependsOn references are valid tasks", async () => {
+		const dir = makeTmpDir();
+		writeFileSync(
+			path.join(dir, "antiscale.config.json"),
+			JSON.stringify({
+				tasks: {
+					lint:  {},
+					build: { dependsOn: ["lint"] },
+				},
+			}),
+		);
+		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		const origCwd = process.cwd;
+		process.cwd = () => dir;
+		try {
+			const { registerCheckAction } = await import("../check.js");
+			await registerCheckAction();
+			expect(log).toHaveBeenCalledWith(expect.stringMatching(/valid/i));
+		} finally {
+			process.cwd = origCwd;
+		}
+	});
+
 	it("throws ConfigError when dependsOn references unknown task", async () => {
 		const dir = makeTmpDir();
 		writeFileSync(

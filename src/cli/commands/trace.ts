@@ -34,7 +34,8 @@ export async function registerTraceAnalyzeAction(
 	if (trace.routes.length > 0) {
 		console.log("\nRoutes:");
 		for (const route of trace.routes) {
-			console.log(`  ${route.path}  (${route.modules.length} modules)`);
+			const mc = route.modules.length;
+			console.log(`  ${route.path}  (${mc} ${mc === 1 ? "module" : "modules"})`);
 		}
 	}
 

@@ -116,6 +116,17 @@ program
 		await registerCheckAction();
 	});
 
+program
+	.command("diff <file>")
+	.description(
+		"Classify a TypeScript file change as non-impacting / internal / breaking",
+	)
+	.option("--base <ref>", "git ref to compare against", "HEAD~1")
+	.action(async (file: string, opts: { base: string }) => {
+		const { registerDiffAction } = await import("./commands/diff.js");
+		await registerDiffAction(file, { base: opts.base });
+	});
+
 program.parseAsync(process.argv).catch((err: unknown) => {
 	if (err instanceof AntiscaleError) {
 		console.error(`[${err.code}] ${err.message}`);

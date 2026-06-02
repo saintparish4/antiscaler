@@ -19,7 +19,7 @@ without forcing a framework migration.
 
 ## Features
 
-**Active in the CLI today (0.5.1)**
+**Active in the CLI today (0.6.0)**
 
 - **Auto-detection** — Detects your package manager (npm / yarn / pnpm via
   lockfile or `pnpm-workspace.yaml`), runtime (Node / Bun / Deno), and

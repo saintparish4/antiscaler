@@ -6,6 +6,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { ConfigError } from "../errors.js";
 import type { TraceFile } from "../../tracer/types.js";
 import type { PackageGraph } from "../graph/package-graph.js";
 
@@ -14,7 +15,18 @@ export async function loadTrace(
 	sessionId: string | "last",
 ): Promise<TraceFile> {
 	const dir = path.resolve(cwd, ".antiscale/traces");
-	const files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
+	let files: string[];
+	try {
+		files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
+	} catch (err) {
+		if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+			throw new ConfigError(
+				`Trace directory not found: "${dir}". Run \`antiscaler trace\` first to record a session.`,
+				{ cause: err },
+			);
+		}
+		throw err;
+	}
 	if (sessionId === "last") {
 		files.sort();
 		const latest = files[files.length - 1];
@@ -33,7 +45,7 @@ export function tracedPackages(
 	const out = new Set<string>();
 	for (const m of trace.modules) {
 		for (const pkg of graph.packages) {
-			if (m.file.startsWith(pkg.dir)) {
+			if (m.file === pkg.dir || m.file.startsWith(pkg.dir + "/")) {
 				out.add(pkg.name);
 				break;
 			}
