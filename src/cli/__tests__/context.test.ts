@@ -117,4 +117,45 @@ describe("toRunOptions", () => {
 		const opts = toRunOptions(ctx);
 		expect(opts.packageScopes).toEqual(["/some/dir"]);
 	});
+
+	it("adds taskFilter to RunOptions when ctx.lintOnly is true", async () => {
+		const dir = makeTmpDir();
+		writeMinimalConfig(dir, { tasks: {} });
+		const { createContext, toRunOptions } = await import("../context.js");
+		const ctx = await createContext(dir);
+		ctx.lintOnly = true;
+		const opts = toRunOptions(ctx);
+		expect(opts.taskFilter).toBeDefined();
+		expect(opts.taskFilter?.("lint")).toBe(true);
+		expect(opts.taskFilter?.("build")).toBe(false);
+	});
+});
+
+describe("createContext (lintOnly / performance config)", () => {
+	it("enters lintOnly code path when lintOnlyForNonCritical is configured", async () => {
+		const dir = makeTmpDir();
+		// Write a trace session so loadTrace does not throw
+		const tracesDir = path.join(dir, ".antiscale", "traces");
+		mkdirSync(tracesDir, { recursive: true });
+		writeFileSync(
+			path.join(tracesDir, "last.json"),
+			JSON.stringify({
+				schemaVersion: 1,
+				sessionId: "last",
+				startedAt: Date.now(),
+				endedAt: Date.now() + 100,
+				framework: "next",
+				modules: [],
+				routes: [],
+			}),
+		);
+		writeMinimalConfig(dir, {
+			performance: { lintOnlyForNonCritical: true, criticalPaths: ["/home"] },
+			tasks: { lint: {} },
+		});
+		const { createContext } = await import("../context.js");
+		const ctx = await createContext(dir);
+		// git is unavailable in tmpDir, so changedFiles is null and lintOnly stays false
+		expect(ctx.lintOnly).toBeFalsy();
+	});
 });

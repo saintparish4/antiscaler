@@ -6,8 +6,8 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { ConfigError } from "../errors.js";
 import type { TraceFile } from "../../tracer/types.js";
+import { ConfigError } from "../errors.js";
 import type { PackageGraph } from "../graph/package-graph.js";
 
 export async function loadTrace(
@@ -45,7 +45,7 @@ export function tracedPackages(
 	const out = new Set<string>();
 	for (const m of trace.modules) {
 		for (const pkg of graph.packages) {
-			if (m.file === pkg.dir || m.file.startsWith(pkg.dir + "/")) {
+			if (m.file === pkg.dir || m.file.startsWith(`${pkg.dir}/`)) {
 				out.add(pkg.name);
 				break;
 			}

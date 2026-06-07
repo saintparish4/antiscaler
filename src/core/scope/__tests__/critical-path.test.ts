@@ -31,15 +31,15 @@ describe("isCriticalChange", () => {
 		const trace = makeTrace([
 			{ path: "/checkout", modules: ["src/checkout.ts", "src/cart.ts"] },
 		]);
-		expect(
-			isCriticalChange(["src/checkout.ts"], trace, ["/checkout"]),
-		).toBe(true);
+		expect(isCriticalChange(["src/checkout.ts"], trace, ["/checkout"])).toBe(
+			true,
+		);
 	});
 
 	it("returns true when changed file appears in one of multiple critical routes", () => {
 		const trace = makeTrace([
 			{ path: "/checkout", modules: ["src/checkout.ts"] },
-			{ path: "/login",    modules: ["src/auth.ts"] },
+			{ path: "/login", modules: ["src/auth.ts"] },
 		]);
 		expect(
 			isCriticalChange(["src/auth.ts"], trace, ["/checkout", "/login"]),
@@ -52,9 +52,9 @@ describe("isCriticalChange", () => {
 			{ path: "/checkout", modules: ["src/checkout.ts"] },
 		]);
 		// src/about.ts is not referenced by /checkout at all
-		expect(
-			isCriticalChange(["src/about.ts"], trace, ["/checkout"]),
-		).toBe(false);
+		expect(isCriticalChange(["src/about.ts"], trace, ["/checkout"])).toBe(
+			false,
+		);
 	});
 
 	it("returns false when no files changed", () => {
@@ -73,35 +73,29 @@ describe("isCriticalChange", () => {
 		// This test documents that behavior so it is not accidentally "fixed" in
 		// a way that silently changes the lint-only fast path.
 		const trace = makeTrace([]); // no routes recorded
-		expect(
-			isCriticalChange(["src/checkout.ts"], trace, ["/checkout"]),
-		).toBe(false);
+		expect(isCriticalChange(["src/checkout.ts"], trace, ["/checkout"])).toBe(
+			false,
+		);
 	});
 
 	// ── criticalPaths that don't match any trace route ───────────────────────
 	it("returns false when criticalPaths don't match any route in the trace", () => {
-		const trace = makeTrace([
-			{ path: "/about", modules: ["src/about.ts"] },
-		]);
+		const trace = makeTrace([{ path: "/about", modules: ["src/about.ts"] }]);
 		// /checkout is declared critical but was never recorded in this trace
-		expect(
-			isCriticalChange(["src/checkout.ts"], trace, ["/checkout"]),
-		).toBe(false);
+		expect(isCriticalChange(["src/checkout.ts"], trace, ["/checkout"])).toBe(
+			false,
+		);
 	});
 
 	// ── Wildcard route matching ───────────────────────────────────────────────
 	it("wildcard matches routes that start with the prefix segment", () => {
 		const trace = makeTrace([
-			{ path: "/admin/users",    modules: ["src/admin/users.ts"] },
+			{ path: "/admin/users", modules: ["src/admin/users.ts"] },
 			{ path: "/admin/settings", modules: ["src/admin/settings.ts"] },
 		]);
-		expect(
-			isCriticalChange(
-				["src/admin/users.ts"],
-				trace,
-				["/admin/*"],
-			),
-		).toBe(true);
+		expect(isCriticalChange(["src/admin/users.ts"], trace, ["/admin/*"])).toBe(
+			true,
+		);
 	});
 
 	it("wildcard does NOT match partial path segment names (exposes BUG 1)", () => {
@@ -112,13 +106,9 @@ describe("isCriticalChange", () => {
 		const trace = makeTrace([
 			{ path: "/apiother", modules: ["src/apiother.ts"] },
 		]);
-		expect(
-			isCriticalChange(
-				["src/apiother.ts"],
-				trace,
-				["/api/*"],
-			),
-		).toBe(false); // EXPECTED TO FAIL until BUG 1 is fixed
+		expect(isCriticalChange(["src/apiother.ts"], trace, ["/api/*"])).toBe(
+			false,
+		); // EXPECTED TO FAIL until BUG 1 is fixed
 	});
 
 	it("exact match: /api does not match /api/users without wildcard", () => {
@@ -126,21 +116,19 @@ describe("isCriticalChange", () => {
 			{ path: "/api/users", modules: ["src/users.ts"] },
 		]);
 		// Exact match — /api !== /api/users
-		expect(
-			isCriticalChange(["src/users.ts"], trace, ["/api"]),
-		).toBe(false);
+		expect(isCriticalChange(["src/users.ts"], trace, ["/api"])).toBe(false);
 	});
 
 	// ── File appears in multiple routes ──────────────────────────────────────
 	it("returns true when a shared module appears in both critical and non-critical routes", () => {
 		const trace = makeTrace([
 			{ path: "/checkout", modules: ["src/shared.ts"] },
-			{ path: "/about",    modules: ["src/shared.ts"] },
+			{ path: "/about", modules: ["src/shared.ts"] },
 		]);
 		// shared.ts is critical because /checkout uses it
-		expect(
-			isCriticalChange(["src/shared.ts"], trace, ["/checkout"]),
-		).toBe(true);
+		expect(isCriticalChange(["src/shared.ts"], trace, ["/checkout"])).toBe(
+			true,
+		);
 	});
 
 	// ── Multiple changed files, only one critical ────────────────────────────

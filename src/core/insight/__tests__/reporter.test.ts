@@ -43,10 +43,9 @@ describe("printInsights — with run results", () => {
 	it("prints MISS status and real duration for a cache miss", () => {
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		printInsights(
-			computeInsights(
-				[{ task: "build", durationMs: 1234, cacheHit: false }],
-				{ tasks: {} },
-			),
+			computeInsights([{ task: "build", durationMs: 1234, cacheHit: false }], {
+				tasks: {},
+			}),
 		);
 		const out = log.mock.calls.map((c) => String(c[0])).join("\n");
 		expect(out).toContain("build");
@@ -57,10 +56,9 @@ describe("printInsights — with run results", () => {
 	it("prints HIT status and dash for duration on a cache hit", () => {
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		printInsights(
-			computeInsights(
-				[{ task: "lint", durationMs: 0, cacheHit: true }],
-				{ tasks: {} },
-			),
+			computeInsights([{ task: "lint", durationMs: 0, cacheHit: true }], {
+				tasks: {},
+			}),
 		);
 		const out = log.mock.calls.map((c) => String(c[0])).join("\n");
 		expect(out).toContain("HIT");
@@ -86,7 +84,7 @@ describe("printInsights — with run results", () => {
 		printInsights(
 			computeInsights(
 				[
-					{ task: "lint",  durationMs: 0, cacheHit: true },
+					{ task: "lint", durationMs: 0, cacheHit: true },
 					{ task: "build", durationMs: 0, cacheHit: true },
 				],
 				{ tasks: {} },
@@ -100,10 +98,9 @@ describe("printInsights — with run results", () => {
 	it("footer shows 0% hit rate when all tasks miss", () => {
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		printInsights(
-			computeInsights(
-				[{ task: "build", durationMs: 500, cacheHit: false }],
-				{ tasks: {} },
-			),
+			computeInsights([{ task: "build", durationMs: 500, cacheHit: false }], {
+				tasks: {},
+			}),
 		);
 		const out = log.mock.calls.map((c) => String(c[0])).join("\n");
 		expect(out).toContain("Cache hit rate: 0%");
@@ -122,7 +119,7 @@ describe("printInsights — with run results", () => {
 			computeInsights(
 				[
 					{ task: "a-very-long-task-name", durationMs: 100, cacheHit: false },
-					{ task: "x",                     durationMs: 200, cacheHit: false },
+					{ task: "x", durationMs: 200, cacheHit: false },
 				],
 				{ tasks: {} },
 			),

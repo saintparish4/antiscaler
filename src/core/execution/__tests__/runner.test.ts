@@ -320,6 +320,112 @@ describe("runTasksWithDeps", () => {
 		expect(typeof cache.tasks[okTaskKey]?.lastDurationMs).toBe("number");
 	});
 
+	// ── taskFilter: filtered tasks are recorded as skipped ──────────────────
+	it("marks tasks as skipped when taskFilter returns false", async () => {
+		const config: ResolvedAntiscaleConfig = {
+			...makeConfig("adaptive"),
+			tasks: { lint: {}, build: { dependsOn: ["lint"] } },
+		};
+		const graph = makeGraph([
+			{ name: "lint" },
+			{ name: "build", deps: ["lint"] },
+		]);
+		const executor = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+
+		const results = await runTasksWithDeps(
+			"build",
+			graph,
+			{
+				cwd,
+				cacheDir,
+				pm: "npm",
+				config,
+				tasks: config.tasks,
+				plugins: emptyPlugins(),
+				taskFilter: (name) => name === "lint",
+			},
+			executor,
+		);
+
+		const buildResult = results.find((r) => r.task === "build");
+		expect(buildResult?.skipped).toBe(true);
+		expect(buildResult?.durationMs).toBe(0);
+		// lint was not filtered out
+		expect(executor).toHaveBeenCalledWith(
+			"lint",
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+		);
+		// build executor was never called
+		expect(executor).not.toHaveBeenCalledWith(
+			"build",
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	// ── plugin onBeforeExecute skip ──────────────────────────────────────────
+	it("returns cacheHit result when plugin onBeforeExecute returns false", async () => {
+		const plugins = new PluginRegistry();
+		plugins.register({
+			name: "cache-skip-plugin",
+			hooks: {
+				onBeforeExecute: async () => false as boolean,
+			},
+		});
+
+		const config: ResolvedAntiscaleConfig = {
+			...makeConfig("adaptive"),
+			tasks: { build: {} },
+		};
+		const graph = makeGraph([{ name: "build" }]);
+		const executor = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+
+		const results = await runTasksWithDeps(
+			"build",
+			graph,
+			{ cwd, cacheDir, pm: "npm", config, tasks: config.tasks, plugins },
+			executor,
+		);
+
+		expect(executor).not.toHaveBeenCalled();
+		expect(results[0]?.cacheHit).toBe(true);
+		expect(results[0]?.durationMs).toBe(0);
+	});
+
+	// ── useScheduler path ────────────────────────────────────────────────────
+	it("runs tasks via event-driven scheduler when useScheduler is true", async () => {
+		const config: ResolvedAntiscaleConfig = {
+			...makeConfig("adaptive"),
+			tasks: { lint: {}, build: { dependsOn: ["lint"] } },
+		};
+		const graph = makeGraph([
+			{ name: "lint" },
+			{ name: "build", deps: ["lint"] },
+		]);
+		const executor = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+
+		const results = await runTasksWithDeps(
+			"build",
+			graph,
+			{
+				cwd,
+				cacheDir,
+				pm: "npm",
+				config,
+				tasks: config.tasks,
+				plugins: emptyPlugins(),
+				useScheduler: true,
+			},
+			executor,
+		);
+
+		expect(executor).toHaveBeenCalledTimes(2);
+		expect(results).toHaveLength(2);
+	});
+
 	// ── 7. Concurrency ceiling ───────────────────────────────────────────────
 	it("respects options.concurrency inside a level", async () => {
 		let inFlight = 0;

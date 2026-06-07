@@ -35,7 +35,9 @@ export async function registerTraceAnalyzeAction(
 		console.log("\nRoutes:");
 		for (const route of trace.routes) {
 			const mc = route.modules.length;
-			console.log(`  ${route.path}  (${mc} ${mc === 1 ? "module" : "modules"})`);
+			console.log(
+				`  ${route.path}  (${mc} ${mc === 1 ? "module" : "modules"})`,
+			);
 		}
 	}
 

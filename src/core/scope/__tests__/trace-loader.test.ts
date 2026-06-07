@@ -71,7 +71,9 @@ describe("loadTrace", () => {
 		const dir = makeTmpDir();
 		mkdirSync(path.join(dir, ".antiscale", "traces"), { recursive: true });
 		// Directory exists but is empty
-		await expect(loadTrace(dir, "last")).rejects.toThrow("No trace files found");
+		await expect(loadTrace(dir, "last")).rejects.toThrow(
+			"No trace files found",
+		);
 	});
 
 	it("throws when traces directory does not exist (exposes BUG 3 — raw ENOENT)", async () => {
@@ -111,9 +113,7 @@ describe("loadTrace", () => {
 });
 
 describe("tracedPackages", () => {
-	function makeGraph(
-		pkgs: Array<{ name: string; dir: string }>,
-	): PackageGraph {
+	function makeGraph(pkgs: Array<{ name: string; dir: string }>): PackageGraph {
 		return {
 			packages: pkgs.map((p) => ({
 				name: p.name,
@@ -142,9 +142,7 @@ describe("tracedPackages", () => {
 		const trace = makeTraceFile({
 			modules: [{ file: "/repo/packages/utils/src/index.ts" }],
 		});
-		const graph = makeGraph([
-			{ name: "utils", dir: "/repo/packages/utils" },
-		]);
+		const graph = makeGraph([{ name: "utils", dir: "/repo/packages/utils" }]);
 		const result = tracedPackages(trace, graph);
 		expect(result.has("utils")).toBe(true);
 		expect(result.size).toBe(1);
@@ -157,8 +155,8 @@ describe("tracedPackages", () => {
 			modules: [{ file: "/repo/packages/utils/index.ts" }],
 		});
 		const graph = makeGraph([
-			{ name: "utils",         dir: "/repo/packages/utils" },
-			{ name: "utils-alias",   dir: "/repo/packages/utils" }, // same dir
+			{ name: "utils", dir: "/repo/packages/utils" },
+			{ name: "utils-alias", dir: "/repo/packages/utils" }, // same dir
 		]);
 		// Only "utils" should be in the result (first match)
 		const result = tracedPackages(trace, graph);
@@ -175,7 +173,7 @@ describe("tracedPackages", () => {
 		});
 		const graph = makeGraph([
 			{ name: "utils", dir: "/repo/packages/utils" },
-			{ name: "web",   dir: "/repo/packages/web" },
+			{ name: "web", dir: "/repo/packages/web" },
 		]);
 		const result = tracedPackages(trace, graph);
 		expect(result.has("utils")).toBe(true);
@@ -187,9 +185,7 @@ describe("tracedPackages", () => {
 		const trace = makeTraceFile({
 			modules: [{ file: "/repo/node_modules/react/index.js" }],
 		});
-		const graph = makeGraph([
-			{ name: "web", dir: "/repo/packages/web" },
-		]);
+		const graph = makeGraph([{ name: "web", dir: "/repo/packages/web" }]);
 		expect(tracedPackages(trace, graph).size).toBe(0);
 	});
 
@@ -202,12 +198,12 @@ describe("tracedPackages", () => {
 			modules: [{ file: "/repo/packages/utils-extra/index.ts" }],
 		});
 		const graph = makeGraph([
-			{ name: "utils",       dir: "/repo/packages/utils" },
+			{ name: "utils", dir: "/repo/packages/utils" },
 			{ name: "utils-extra", dir: "/repo/packages/utils-extra" },
 		]);
 		const result = tracedPackages(trace, graph);
 		// Should only match "utils-extra", NOT "utils"
-		expect(result.has("utils")).toBe(false);   // EXPECTED TO FAIL until BUG 2 is fixed
+		expect(result.has("utils")).toBe(false); // EXPECTED TO FAIL until BUG 2 is fixed
 		expect(result.has("utils-extra")).toBe(true);
 	});
 });

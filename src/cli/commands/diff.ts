@@ -22,11 +22,9 @@ export async function registerDiffAction(
 	// Falls back to empty string when the file is new (not yet in git history).
 	let before = "";
 	try {
-		const { stdout } = await execa(
-			"git",
-			["show", `${baseRef}:${relPath}`],
-			{ cwd },
-		);
+		const { stdout } = await execa("git", ["show", `${baseRef}:${relPath}`], {
+			cwd,
+		});
 		before = stdout;
 	} catch {
 		// New file or git unavailable — treat as empty baseline.
@@ -44,8 +42,8 @@ export async function registerDiffAction(
 
 	const classLabel: Record<string, string> = {
 		"non-impacting": "non-impacting  (safe to skip build)",
-		internal:        "internal       (non-exported change)",
-		breaking:        "breaking       (exported API changed)",
+		internal: "internal       (non-exported change)",
+		breaking: "breaking       (exported API changed)",
 	};
 
 	console.log(`\nFile:           ${result.filePath}`);
@@ -55,7 +53,7 @@ export async function registerDiffAction(
 	const { added, removed, changed } = result.exportedSymbols;
 	if (added.length > 0 || removed.length > 0 || changed.length > 0) {
 		console.log("\nExported symbol changes:");
-		if (added.length > 0)   console.log(`  added:   ${added.join(", ")}`);
+		if (added.length > 0) console.log(`  added:   ${added.join(", ")}`);
 		if (removed.length > 0) console.log(`  removed: ${removed.join(", ")}`);
 		if (changed.length > 0) console.log(`  changed: ${changed.join(", ")}`);
 	}

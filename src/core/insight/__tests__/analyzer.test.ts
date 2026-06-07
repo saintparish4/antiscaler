@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CacheFile } from "../../cache/store.js";
 import { computeInsights } from "../analyzer.js";
 
-function makeCache(
-	entries: CacheFile["tasks"] = {},
-): CacheFile {
+function makeCache(entries: CacheFile["tasks"] = {}): CacheFile {
 	return { tasks: entries };
 }
 
@@ -18,8 +16,8 @@ describe("computeInsights", () => {
 
 	it("returns hit rate of 1 when all tasks are cache hits", () => {
 		const results = [
-			{ task: "lint",  durationMs: 0,   cacheHit: true },
-			{ task: "build", durationMs: 0,   cacheHit: true },
+			{ task: "lint", durationMs: 0, cacheHit: true },
+			{ task: "build", durationMs: 0, cacheHit: true },
 		];
 		const summary = computeInsights(results, makeCache());
 		expect(summary.cacheHitRate).toBe(1);
@@ -28,7 +26,7 @@ describe("computeInsights", () => {
 
 	it("returns hit rate of 0 when all tasks are cache misses", () => {
 		const results = [
-			{ task: "lint",  durationMs: 300, cacheHit: false },
+			{ task: "lint", durationMs: 300, cacheHit: false },
 			{ task: "build", durationMs: 500, cacheHit: false },
 		];
 		const summary = computeInsights(results, makeCache());
@@ -39,10 +37,10 @@ describe("computeInsights", () => {
 	it("computes mixed hit rate correctly", () => {
 		// 1 hit out of 4 = 0.25
 		const results = [
-			{ task: "typecheck", durationMs: 0,   cacheHit: true },
-			{ task: "lint",      durationMs: 200, cacheHit: false },
-			{ task: "build",     durationMs: 400, cacheHit: false },
-			{ task: "test",      durationMs: 600, cacheHit: false },
+			{ task: "typecheck", durationMs: 0, cacheHit: true },
+			{ task: "lint", durationMs: 200, cacheHit: false },
+			{ task: "build", durationMs: 400, cacheHit: false },
+			{ task: "test", durationMs: 600, cacheHit: false },
 		];
 		const summary = computeInsights(results, makeCache());
 		expect(summary.cacheHitRate).toBe(0.25);
@@ -53,11 +51,11 @@ describe("computeInsights", () => {
 		// A skipped task has cacheHit: false and durationMs: 0 — it does NOT
 		// count as a hit, but it also does not inflate total time.
 		const results = [
-			{ task: "build", durationMs: 500,  cacheHit: false },
-			{ task: "lint",  durationMs: 0,    cacheHit: false, skipped: true },
+			{ task: "build", durationMs: 500, cacheHit: false },
+			{ task: "lint", durationMs: 0, cacheHit: false, skipped: true },
 		];
 		const summary = computeInsights(results, makeCache());
-		expect(summary.cacheHitRate).toBe(0);     // no hits
+		expect(summary.cacheHitRate).toBe(0); // no hits
 		expect(summary.totalDurationMs).toBe(500); // skipped contributes 0
 	});
 
@@ -72,9 +70,9 @@ describe("computeInsights", () => {
 
 	it("preserves result order in lastRunResults", () => {
 		const results = [
-			{ task: "lint",  durationMs: 100, cacheHit: false },
+			{ task: "lint", durationMs: 100, cacheHit: false },
 			{ task: "build", durationMs: 200, cacheHit: false },
-			{ task: "test",  durationMs: 300, cacheHit: false },
+			{ task: "test", durationMs: 300, cacheHit: false },
 		];
 		const summary = computeInsights(results, makeCache());
 		expect(summary.lastRunResults.map((r) => r.task)).toEqual([

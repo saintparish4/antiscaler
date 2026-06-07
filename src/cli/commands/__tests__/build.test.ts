@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -61,7 +61,46 @@ describe("registerBuildAction", () => {
 		process.cwd = () => dir;
 		try {
 			const { registerBuildAction } = await import("../build.js");
-			await expect(registerBuildAction()).rejects.toBeInstanceOf(AntiscaleError);
+			await expect(registerBuildAction()).rejects.toBeInstanceOf(
+				AntiscaleError,
+			);
+		} finally {
+			process.cwd = origCwd;
+		}
+	});
+
+	it("runs build with scope option when a trace session file exists", async () => {
+		const dir = makeTmpDir();
+		writeFileSync(
+			path.join(dir, "antiscale.config.json"),
+			JSON.stringify({
+				tasks: { build: { command: "echo build-scope-ok" } },
+				cache: { directory: path.join(dir, ".antiscale/cache") },
+			}),
+		);
+		// Create a trace session file so loadTrace succeeds
+		const traceDir = path.join(dir, ".antiscale", "traces");
+		mkdirSync(traceDir, { recursive: true });
+		writeFileSync(
+			path.join(traceDir, "scope-sess.json"),
+			JSON.stringify({
+				schemaVersion: 1,
+				sessionId: "scope-sess",
+				startedAt: Date.now(),
+				endedAt: Date.now() + 100,
+				framework: "next",
+				modules: [],
+				routes: [],
+			}),
+		);
+		vi.spyOn(console, "log").mockImplementation(() => {});
+		const origCwd = process.cwd;
+		process.cwd = () => dir;
+		try {
+			const { registerBuildAction } = await import("../build.js");
+			await expect(
+				registerBuildAction({ scope: "scope-sess" }),
+			).resolves.toBeUndefined();
 		} finally {
 			process.cwd = origCwd;
 		}
@@ -81,7 +120,9 @@ describe("registerBuildAction", () => {
 		process.cwd = () => dir;
 		try {
 			const { registerBuildAction } = await import("../build.js");
-			await expect(registerBuildAction({ concurrency: 1 })).resolves.toBeUndefined();
+			await expect(
+				registerBuildAction({ concurrency: 1 }),
+			).resolves.toBeUndefined();
 		} finally {
 			process.cwd = origCwd;
 		}

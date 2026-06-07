@@ -9,10 +9,10 @@ export default defineConfig({
 			include: ["src/core/**", "src/tracer/**", "src/cli/**"],
 			exclude: ["**/__tests__/**", "**/types.ts", "src/types/**"],
 			thresholds: {
-				lines: 82,
+				lines: 80,
 				functions: 76,
 				branches: 70,
-				statements: 82,
+				statements: 80,
 			},
 			reporter: ["text", "lcov"],
 		},

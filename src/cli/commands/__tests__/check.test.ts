@@ -52,7 +52,7 @@ describe("registerCheckAction", () => {
 			path.join(dir, "antiscale.config.json"),
 			JSON.stringify({
 				tasks: {
-					lint:  {},
+					lint: {},
 					build: { dependsOn: ["lint"] },
 				},
 			}),

@@ -67,10 +67,7 @@ describe("registerDiffAction", () => {
 
 	it("uses the --base option when provided", async () => {
 		const dir = makeTmpDir();
-		writeFileSync(
-			path.join(dir, "thing.ts"),
-			"export const x = 1;\n",
-		);
+		writeFileSync(path.join(dir, "thing.ts"), "export const x = 1;\n");
 		const log = vi.spyOn(console, "log").mockImplementation(() => {});
 		const origCwd = process.cwd;
 		process.cwd = () => dir;

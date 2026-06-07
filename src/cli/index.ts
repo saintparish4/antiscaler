@@ -127,6 +127,52 @@ program
 		await registerDiffAction(file, { base: opts.base });
 	});
 
+const prCmd = program.command("pr").description("PR-aware analysis commands");
+
+prCmd
+	.command("check")
+	.description(
+		"Classify all TypeScript changes in this PR and report a build verdict",
+	)
+	.option("--base <ref>", "base branch or ref for the PR diff", "main")
+	.action(async (opts: { base: string }) => {
+		const { registerPrCheckAction } = await import("./commands/pr.js");
+		await registerPrCheckAction({ base: opts.base });
+	});
+
+prCmd
+	.command("replay")
+	.description(
+		"Intersect PR-changed files with the last trace session to find touched routes",
+	)
+	.option("--base <ref>", "base branch or ref for the PR diff", "main")
+	.option("--session <id>", "trace session ID to replay (default: last)")
+	.action(async (opts: { base: string; session?: string }) => {
+		const { registerPrReplayAction } = await import("./commands/pr.js");
+		await registerPrReplayAction(opts);
+	});
+
+prCmd
+	.command("report")
+	.description(
+		"Combine pr check + pr replay into a structured JSON or markdown report",
+	)
+	.option("--base <ref>", "base branch or ref for the PR diff", "main")
+	.option("--session <id>", "trace session ID to replay (default: last)")
+	.option("--markdown", "output a markdown summary instead of JSON")
+	.option("--output <file>", "write report to file instead of stdout")
+	.action(
+		async (opts: {
+			base: string;
+			session?: string;
+			markdown?: boolean;
+			output?: string;
+		}) => {
+			const { registerPrReportAction } = await import("./commands/pr.js");
+			await registerPrReportAction(opts);
+		},
+	);
+
 program.parseAsync(process.argv).catch((err: unknown) => {
 	if (err instanceof AntiscaleError) {
 		console.error(`[${err.code}] ${err.message}`);

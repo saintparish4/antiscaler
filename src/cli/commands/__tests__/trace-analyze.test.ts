@@ -3,6 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TraceFile } from "../../../tracer/types.js";
+import { loadPackageGraph } from "../../../core/graph/package-graph.js";
+
+vi.mock("../../../core/graph/package-graph.js", () => ({
+	loadPackageGraph: vi.fn().mockResolvedValue({ packages: [], edges: new Map() }),
+	tasksFromPackageGraph: vi.fn(() => ({})),
+}));
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,7 +45,7 @@ function makeTrace(overrides: Partial<TraceFile> = {}): TraceFile {
 		schemaVersion: 1,
 		sessionId: "sess-001",
 		startedAt: Date.now() - 5000,
-		endedAt:   Date.now(),
+		endedAt: Date.now(),
 		framework: "next",
 		modules: [],
 		routes: [],
@@ -52,13 +58,13 @@ function makeTrace(overrides: Partial<TraceFile> = {}): TraceFile {
 describe("registerTraceAnalyzeAction", () => {
 	let cwd: string;
 	let logs: string[];
-	let consoleSpy: ReturnType<typeof vi.spyOn>;
+	let _consoleSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		cwd = makeTmpDir();
 		writeConfig(cwd);
 		logs = [];
-		consoleSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+		_consoleSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
 			logs.push(args.map(String).join(" "));
 		});
 	});
@@ -86,7 +92,7 @@ describe("registerTraceAnalyzeAction", () => {
 		const trace = makeTrace({
 			sessionId: "with-routes",
 			routes: [
-				{ path: "/home",     modules: ["src/home.ts", "src/layout.ts"] },
+				{ path: "/home", modules: ["src/home.ts", "src/layout.ts"] },
 				{ path: "/checkout", modules: ["src/checkout.ts"] },
 			],
 		});
@@ -127,9 +133,7 @@ describe("registerTraceAnalyzeAction", () => {
 		// Route with exactly 1 module → "1 module" (not "1 modules")
 		const trace = makeTrace({
 			sessionId: "singular",
-			routes: [
-				{ path: "/solo", modules: ["src/solo.ts"] },
-			],
+			routes: [{ path: "/solo", modules: ["src/solo.ts"] }],
 		});
 		writeTraceSession(cwd, trace);
 		const origCwd = process.cwd();
@@ -164,26 +168,93 @@ describe("registerTraceAnalyzeAction", () => {
 
 describe("registerTraceAction", () => {
 	it("sets ANTISCALER_TRACE env var before running dev task", async () => {
-		// We cannot run the full dev task in a unit test, but we can verify
-		// the side-effect: registerTraceAction sets process.env.ANTISCALER_TRACE.
-		// The test is a smoke test that the env var wiring is present.
-		//
-		// NOTE: this env var is never cleaned up — if the process continues
-		// after the trace command (e.g., in a test runner), subsequent tasks
-		// see ANTISCALER_TRACE=1 unintentionally. This is a known limitation.
 		const before = process.env["ANTISCALER_TRACE"];
 		try {
-			// We only test that the module exports the function correctly
 			const mod = await import("../trace.js");
 			expect(typeof mod.registerTraceAction).toBe("function");
 			expect(typeof mod.registerTraceAnalyzeAction).toBe("function");
 		} finally {
-			// Restore env to avoid test pollution
+			if (before === undefined) {
+				process.env["ANTISCALER_TRACE"] = undefined;
+			} else {
+				process.env["ANTISCALER_TRACE"] = before;
+			}
+		}
+	});
+
+	it("actually runs the dev task and sets ANTISCALER_TRACE=1", async () => {
+		const dir = makeTmpDir();
+		writeFileSync(
+			path.join(dir, "antiscale.config.json"),
+			JSON.stringify({
+				tasks: { dev: { command: "echo dev-trace-ok" } },
+				cache: { directory: path.join(dir, ".antiscale/cache") },
+			}),
+		);
+		vi.spyOn(console, "log").mockImplementation(() => {});
+		const origCwd = process.cwd();
+		process.chdir(dir);
+		const before = process.env["ANTISCALER_TRACE"];
+		try {
+			const { registerTraceAction } = await import("../trace.js");
+			await expect(registerTraceAction()).resolves.toBeUndefined();
+			expect(process.env["ANTISCALER_TRACE"]).toBe("1");
+		} finally {
+			process.chdir(origCwd);
 			if (before === undefined) {
 				delete process.env["ANTISCALER_TRACE"];
 			} else {
 				process.env["ANTISCALER_TRACE"] = before;
 			}
 		}
+	});
+});
+
+describe("registerTraceAnalyzeAction (with packages)", () => {
+	let cwd: string;
+	let logs: string[];
+	let _consoleSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		cwd = makeTmpDir();
+		logs = [];
+		_consoleSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+			logs.push(args.map(String).join(" "));
+		});
+		vi.mocked(loadPackageGraph).mockResolvedValue({
+			packages: [],
+			edges: new Map(),
+		});
+	});
+
+	it("prints packages block when workspace packages are present", async () => {
+		writeConfig(cwd);
+		const pkgDir = path.join(cwd, "packages", "mylib");
+		mkdirSync(pkgDir, { recursive: true });
+
+		const moduleFile = path.join(pkgDir, "index.ts");
+		vi.mocked(loadPackageGraph).mockResolvedValue({
+			packages: [{ name: "mylib", dir: pkgDir, manifest: { name: "mylib" } }],
+			edges: new Map(),
+		});
+		writeTraceSession(
+			cwd,
+			makeTrace({
+				sessionId: "with-pkg",
+				modules: [{ file: moduleFile }],
+			}),
+		);
+
+		const origCwd = process.cwd();
+		process.chdir(cwd);
+		try {
+			const { registerTraceAnalyzeAction } = await import("../trace.js");
+			await registerTraceAnalyzeAction("with-pkg");
+		} finally {
+			process.chdir(origCwd);
+		}
+		const out = logs.join("\n");
+		expect(out).toContain("Packages touched");
+		expect(out).toContain("mylib");
 	});
 });

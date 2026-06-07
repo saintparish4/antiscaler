@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-04
+
+### Added
+
+- `antiscaler pr check` — runs a three-dot git diff against a base branch,
+  classifies every changed `.ts`/`.tsx` file via the AST semantic differ, and
+  reports a per-file table plus a rollup verdict: `safe to skip build`,
+  `build recommended`, or `build required`.
+- `antiscaler pr replay` — loads the last recorded trace session and intersects
+  its module list with the PR-changed files to report which routes and packages
+  are touched by this PR.
+- `antiscaler pr report` — combines `pr check` and `pr replay` into a single
+  structured JSON output. Pass `--markdown` for a GitHub-comment-ready summary
+  and `--output <file>` to write to disk instead of stdout.
+- GitHub Actions workflow (`.github/workflows/pr-report.yml`) that runs
+  `antiscaler pr report --markdown` on every pull request and posts or updates
+  a sticky comment with the report.
+- All three PR commands accept `--base <ref>` (default: `main`) and `pr replay`
+  / `pr report` also accept `--session <id>` (default: last recorded session).
+
 ## [0.5.1] - 2026-05-21
 
 ### Fixed
@@ -142,7 +162,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `antiscaler --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/saintparish4/antiscaler/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/saintparish4/antiscaler/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/saintparish4/antiscaler/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/saintparish4/antiscaler/compare/v0.3.0...v0.4.0

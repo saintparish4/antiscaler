@@ -28,7 +28,7 @@ describe("buildGraph", () => {
 	it("creates tasks and respects dependsOn", () => {
 		const g = buildGraph(
 			makeConfig({
-				lint:  {},
+				lint: {},
 				build: { dependsOn: ["lint"] },
 			}),
 		);
@@ -53,9 +53,9 @@ describe("buildGraph", () => {
 		const g = buildGraph(
 			makeConfig({
 				typecheck: {},
-				lint:      {},
-				build:     { dependsOn: ["typecheck", "lint"] },
-				test:      { dependsOn: ["build"] },
+				lint: {},
+				build: { dependsOn: ["typecheck", "lint"] },
+				test: { dependsOn: ["build"] },
 			}),
 		);
 		const levels = g.toLevels("test");
@@ -95,9 +95,9 @@ describe("buildGraph", () => {
 	it("getDependencies returns the direct deps declared in config", () => {
 		const g = buildGraph(
 			makeConfig({
-				lint:  {},
+				lint: {},
 				build: { dependsOn: ["lint"] },
-				test:  { dependsOn: ["build"] },
+				test: { dependsOn: ["build"] },
 			}),
 		);
 		// build depends directly on lint only, not test

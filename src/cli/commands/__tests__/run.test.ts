@@ -61,9 +61,9 @@ describe("registerRunAction", () => {
 		process.cwd = () => dir;
 		try {
 			const { registerRunAction } = await import("../run.js");
-			await expect(
-				registerRunAction("nonexistent"),
-			).rejects.toBeInstanceOf(AntiscaleError);
+			await expect(registerRunAction("nonexistent")).rejects.toBeInstanceOf(
+				AntiscaleError,
+			);
 		} finally {
 			process.cwd = origCwd;
 		}
