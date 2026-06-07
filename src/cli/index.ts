@@ -23,14 +23,25 @@ program
 	.option("-c, --concurrency <n>", "max tasks per DAG level")
 	.option("--scope <sessionId>", "restrict build to packages in trace")
 	.option("--trace <which>", "shorthand for --scope=last")
+	.option(
+		"--affected",
+		"run only packages affected by changes since baseRef (includes cascade dependents)",
+	)
 	.action(
-		async (opts: ConcurrencyOpts & { scope?: string; trace?: string }) => {
+		async (
+			opts: ConcurrencyOpts & {
+				scope?: string;
+				trace?: string;
+				affected?: boolean;
+			},
+		) => {
 			const { registerBuildAction } = await import("./commands/build.js");
 			const concurrency = parseConcurrency(opts);
 			const scope = opts.scope ?? (opts.trace === "last" ? "last" : undefined);
 			await registerBuildAction({
 				...(concurrency !== undefined && { concurrency }),
 				...(scope !== undefined && { scope }),
+				...(opts.affected && { affected: true }),
 			});
 		},
 	);

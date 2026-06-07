@@ -42,6 +42,12 @@ export interface AntiscaleContext {
 	plugins: PluginRegistry;
 	packageScopes?: string[];
 	/**
+	 * Package names (including cascade dependents) affected by the current
+	 * git diff. Set when git is available and changes are detected.
+	 * Used by --affected to filter task execution.
+	 */
+	affectedPackages?: ReadonlySet<string>;
+	/**
 	 * True when lintOnlyForNonCritical is enabled and the current changes do
 	 * not affect any critical route. Commands should restrict execution to
 	 * lint tasks only when this flag is set.

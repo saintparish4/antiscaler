@@ -1,6 +1,8 @@
 export interface BuildActionOptions {
 	concurrency?: number;
 	scope?: string;
+	/** When true, only run tasks for packages affected by the current git diff (including cascade dependents). */
+	affected?: boolean;
 }
 
 export async function registerBuildAction(
@@ -30,6 +32,19 @@ export async function registerBuildAction(
 			return traced.has(pkg ?? "") ? 0 : Number.POSITIVE_INFINITY;
 		};
 		runOptions.useScheduler = true;
+	}
+
+	if (opts.affected && ctx.affectedPackages !== undefined) {
+		const affectedPkgs = ctx.affectedPackages;
+		const affectedFilter = (taskName: string) => {
+			const colon = taskName.indexOf(":");
+			if (colon === -1) return true; // root-level task (e.g. "build")
+			return affectedPkgs.has(taskName.slice(0, colon));
+		};
+		const existing = runOptions.taskFilter;
+		runOptions.taskFilter = existing
+			? (name) => existing(name) && affectedFilter(name)
+			: affectedFilter;
 	}
 
 	const results = await runTasksWithDeps("build", ctx.graph, runOptions);

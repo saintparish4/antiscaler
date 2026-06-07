@@ -123,6 +123,47 @@ export function tasksFromPackageGraph(
 	return out;
 }
 
+/**
+ * BFS over the reverse dependency graph: returns every package that is
+ * directly changed OR transitively depends on a changed package.
+ *
+ * Example: utils changes → web (depends on utils) is also affected.
+ */
+export function computeAffectedPackages(
+	changed: ReadonlySet<string>,
+	graph: PackageGraph,
+): Set<string> {
+	// Build reverse edges: dep -> packages that declare it as a dependency
+	const rdeps = new Map<string, Set<string>>();
+	for (const [name, deps] of graph.edges) {
+		for (const dep of deps) {
+			let s = rdeps.get(dep);
+			if (!s) {
+				s = new Set();
+				rdeps.set(dep, s);
+			}
+			s.add(name);
+		}
+	}
+
+	const affected = new Set<string>(changed);
+	// Frontier BFS: each wave expands to packages that depend on the previous wave.
+	let frontier = new Set<string>(changed);
+	while (frontier.size > 0) {
+		const next = new Set<string>();
+		for (const pkg of frontier) {
+			for (const dependent of rdeps.get(pkg) ?? []) {
+				if (!affected.has(dependent)) {
+					affected.add(dependent);
+					next.add(dependent);
+				}
+			}
+		}
+		frontier = next;
+	}
+	return affected;
+}
+
 async function readWorkspaceGlobs(cwd: string): Promise<string[]> {
 	const pnpm = path.join(cwd, "pnpm-workspace.yaml");
 	if (await fileExists(pnpm)) {

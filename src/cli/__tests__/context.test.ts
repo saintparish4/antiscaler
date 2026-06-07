@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -128,6 +129,77 @@ describe("toRunOptions", () => {
 		expect(opts.taskFilter).toBeDefined();
 		expect(opts.taskFilter?.("lint")).toBe(true);
 		expect(opts.taskFilter?.("build")).toBe(false);
+	});
+});
+
+describe("createContext (cascade / affectedPackages)", () => {
+	it("affectedPackages is undefined when no git repo exists", async () => {
+		const dir = makeTmpDir();
+		writeMinimalConfig(dir, { tasks: {} });
+		const { createContext } = await import("../context.js");
+		const ctx = await createContext(dir);
+		expect(ctx.affectedPackages).toBeUndefined();
+	});
+
+	it("affectedPackages cascades to dependents when git detects a direct change", async () => {
+		const dir = makeTmpDir();
+		writeFileSync(
+			path.join(dir, "pnpm-workspace.yaml"),
+			"packages:\n  - 'packages/*'\n",
+		);
+		mkdirSync(path.join(dir, "packages/utils/src"), { recursive: true });
+		mkdirSync(path.join(dir, "packages/web/src"), { recursive: true });
+		writeFileSync(
+			path.join(dir, "packages/utils/package.json"),
+			JSON.stringify({ name: "utils", scripts: { build: "tsc" } }),
+		);
+		writeFileSync(
+			path.join(dir, "packages/web/package.json"),
+			JSON.stringify({
+				name: "web",
+				scripts: { build: "next build" },
+				dependencies: { utils: "workspace:*" },
+			}),
+		);
+		writeFileSync(
+			path.join(dir, "packages/utils/src/index.ts"),
+			"export const x = 1;\n",
+		);
+		writeFileSync(
+			path.join(dir, "packages/web/src/index.ts"),
+			"export const y = 1;\n",
+		);
+		writeMinimalConfig(dir, { workspace: { enabled: true }, tasks: {} });
+
+		const GIT = [
+			"-c",
+			"user.email=t@t.com",
+			"-c",
+			"user.name=T",
+		].join(" ");
+		const run = (cmd: string) =>
+			execSync(cmd, { cwd: dir, stdio: "ignore" });
+		run("git init");
+		run(`git ${GIT} commit --allow-empty -m base`);
+		run("git add .");
+		run(`git ${GIT} commit -m initial`);
+
+		// Change utils and commit so HEAD~1 diff shows utils changed
+		writeFileSync(
+			path.join(dir, "packages/utils/src/index.ts"),
+			"export const x = 2;\n",
+		);
+		run("git add .");
+		run(`git ${GIT} commit -m "change utils"`);
+
+		const { createContext } = await import("../context.js");
+		const ctx = await createContext(dir);
+
+		// utils directly changed; web depends on utils → both in affectedPackages
+		expect(ctx.affectedPackages?.has("utils")).toBe(true);
+		expect(ctx.affectedPackages?.has("web")).toBe(true);
+		// packageScopes covers both dirs (so each task hashes its own files normally)
+		expect(ctx.packageScopes?.length).toBe(2);
 	});
 });
 

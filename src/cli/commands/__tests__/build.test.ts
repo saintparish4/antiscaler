@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -104,6 +105,116 @@ describe("registerBuildAction", () => {
 		} finally {
 			process.cwd = origCwd;
 		}
+	});
+
+	it("affected: true with no git is a no-op (runs all tasks)", async () => {
+		const dir = makeTmpDir();
+		writeFileSync(
+			path.join(dir, "antiscale.config.json"),
+			JSON.stringify({
+				tasks: { build: { command: "echo build-ok" } },
+				cache: { directory: path.join(dir, ".antiscale/cache") },
+			}),
+		);
+		vi.spyOn(console, "log").mockImplementation(() => {});
+		const origCwd = process.cwd;
+		process.cwd = () => dir;
+		try {
+			const { registerBuildAction } = await import("../build.js");
+			// No git → affectedPackages undefined → --affected is a no-op
+			await expect(
+				registerBuildAction({ affected: true }),
+			).resolves.toBeUndefined();
+		} finally {
+			process.cwd = origCwd;
+		}
+	});
+
+	it("affected: true filters tasks to affected packages only", async () => {
+		const dir = makeTmpDir();
+		// workspace: utils (changed), web (depends on utils), docs (no dep)
+		writeFileSync(
+			path.join(dir, "pnpm-workspace.yaml"),
+			"packages:\n  - 'packages/*'\n",
+		);
+		for (const name of ["utils", "web", "docs"]) {
+			mkdirSync(path.join(dir, `packages/${name}/src`), { recursive: true });
+		}
+		writeFileSync(
+			path.join(dir, "packages/utils/package.json"),
+			JSON.stringify({ name: "utils", scripts: { build: "echo utils:build" } }),
+		);
+		writeFileSync(
+			path.join(dir, "packages/utils/src/index.ts"),
+			"export const x = 1;\n",
+		);
+		writeFileSync(
+			path.join(dir, "packages/web/package.json"),
+			JSON.stringify({
+				name: "web",
+				scripts: { build: "echo web:build" },
+				dependencies: { utils: "workspace:*" },
+			}),
+		);
+		writeFileSync(
+			path.join(dir, "packages/web/src/index.ts"),
+			"export const y = 1;\n",
+		);
+		writeFileSync(
+			path.join(dir, "packages/docs/package.json"),
+			JSON.stringify({ name: "docs", scripts: { build: "echo docs:build" } }),
+		);
+		writeFileSync(
+			path.join(dir, "packages/docs/src/index.ts"),
+			"export const z = 1;\n",
+		);
+		writeFileSync(
+			path.join(dir, "antiscale.config.json"),
+			JSON.stringify({
+				workspace: { enabled: true },
+				tasks: { build: { command: "node -e 0" } },
+				cache: { directory: path.join(dir, ".antiscale/cache") },
+			}),
+		);
+
+		const GIT = "-c user.email=t@t.com -c user.name=T";
+		const run = (cmd: string) =>
+			execSync(cmd, { cwd: dir, stdio: "ignore" });
+		run("git init");
+		run(`git ${GIT} commit --allow-empty -m base`);
+		run("git add .");
+		run(`git ${GIT} commit -m initial`);
+		// Change only utils; web is a cascade dep, docs is not
+		writeFileSync(
+			path.join(dir, "packages/utils/src/index.ts"),
+			"export const x = 2;\n",
+		);
+		run("git add .");
+		run(`git ${GIT} commit -m "change utils"`);
+
+		const rows: string[] = [];
+		vi.spyOn(console, "log").mockImplementation((...args) => {
+			rows.push(String(args[0]));
+		});
+		const origCwd = process.cwd;
+		process.cwd = () => dir;
+		try {
+			const { registerBuildAction } = await import("../build.js");
+			await registerBuildAction({ affected: true });
+		} finally {
+			process.cwd = origCwd;
+		}
+
+		const out = rows.join("\n");
+		const statusLine = (name: string) =>
+			out.split("\n").find((l) => l.includes(name) && /MISS|HIT|SKIP/.test(l));
+
+		// utils changed → must run
+		expect(statusLine("utils:build")).toMatch(/MISS|HIT/);
+		// web depends on utils → cascade → must run
+		expect(statusLine("web:build")).toMatch(/MISS|HIT/);
+		// docs has no dependency on utils → must be skipped
+		expect(statusLine("docs:build")).toMatch(/SKIP/);
 	});
 
 	it("respects concurrency option without throwing", async () => {

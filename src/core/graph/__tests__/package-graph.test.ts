@@ -2,7 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadPackageGraph, tasksFromPackageGraph } from "../package-graph.js";
+import {
+	computeAffectedPackages,
+	loadPackageGraph,
+	tasksFromPackageGraph,
+} from "../package-graph.js";
 
 const tmpDirs: string[] = [];
 
@@ -105,6 +109,137 @@ describe("loadPackageGraph", () => {
 		);
 		const g = await loadPackageGraph(root);
 		expect(g.packages).toHaveLength(0);
+	});
+});
+
+describe("computeAffectedPackages", () => {
+	it("includes directly-changed packages", async () => {
+		const root = fixture();
+		const g = await loadPackageGraph(root);
+		const affected = computeAffectedPackages(new Set(["utils"]), g);
+		expect(affected.has("utils")).toBe(true);
+	});
+
+	it("cascades to packages that depend on the changed package", async () => {
+		const root = fixture();
+		const g = await loadPackageGraph(root);
+		// web depends on utils; changing utils should include web
+		const affected = computeAffectedPackages(new Set(["utils"]), g);
+		expect(affected.has("web")).toBe(true);
+	});
+
+	it("excludes packages that do not depend on the changed package", async () => {
+		const root = makeTmpDir();
+		writeFileSync(
+			path.join(root, "pnpm-workspace.yaml"),
+			"packages:\n  - 'packages/*'\n",
+		);
+		mkdirSync(path.join(root, "packages/utils"), { recursive: true });
+		mkdirSync(path.join(root, "packages/web"), { recursive: true });
+		mkdirSync(path.join(root, "packages/docs"), { recursive: true });
+		writeFileSync(
+			path.join(root, "packages/utils/package.json"),
+			JSON.stringify({ name: "utils", scripts: { build: "tsc" } }),
+		);
+		writeFileSync(
+			path.join(root, "packages/web/package.json"),
+			JSON.stringify({
+				name: "web",
+				scripts: { build: "next build" },
+				dependencies: { utils: "workspace:*" },
+			}),
+		);
+		// docs has no dependency on utils
+		writeFileSync(
+			path.join(root, "packages/docs/package.json"),
+			JSON.stringify({ name: "docs", scripts: { build: "echo docs" } }),
+		);
+		const g = await loadPackageGraph(root);
+		const affected = computeAffectedPackages(new Set(["utils"]), g);
+		expect(affected.has("utils")).toBe(true);
+		expect(affected.has("web")).toBe(true);
+		expect(affected.has("docs")).toBe(false);
+	});
+
+	it("handles transitive cascade (A→B→C)", async () => {
+		const root = makeTmpDir();
+		writeFileSync(
+			path.join(root, "pnpm-workspace.yaml"),
+			"packages:\n  - 'packages/*'\n",
+		);
+		for (const name of ["a", "b", "c"]) {
+			mkdirSync(path.join(root, `packages/${name}`), { recursive: true });
+		}
+		writeFileSync(
+			path.join(root, "packages/a/package.json"),
+			JSON.stringify({ name: "a", scripts: { build: "echo a" } }),
+		);
+		writeFileSync(
+			path.join(root, "packages/b/package.json"),
+			JSON.stringify({
+				name: "b",
+				scripts: { build: "echo b" },
+				dependencies: { a: "workspace:*" },
+			}),
+		);
+		writeFileSync(
+			path.join(root, "packages/c/package.json"),
+			JSON.stringify({
+				name: "c",
+				scripts: { build: "echo c" },
+				dependencies: { b: "workspace:*" },
+			}),
+		);
+		const g = await loadPackageGraph(root);
+		const affected = computeAffectedPackages(new Set(["a"]), g);
+		expect(affected.has("a")).toBe(true);
+		expect(affected.has("b")).toBe(true); // b depends on a
+		expect(affected.has("c")).toBe(true); // c depends on b which depends on a
+	});
+
+	it("returns only changed package when it has no dependents", async () => {
+		const root = fixture();
+		const g = await loadPackageGraph(root);
+		// web has no dependents in this fixture
+		const affected = computeAffectedPackages(new Set(["web"]), g);
+		expect(affected.has("web")).toBe(true);
+		expect(affected.has("utils")).toBe(false);
+	});
+
+	it("diamond: two packages depend on the same changed package", async () => {
+		const root = makeTmpDir();
+		writeFileSync(
+			path.join(root, "pnpm-workspace.yaml"),
+			"packages:\n  - 'packages/*'\n",
+		);
+		for (const name of ["base", "left", "right"]) {
+			mkdirSync(path.join(root, `packages/${name}`), { recursive: true });
+		}
+		writeFileSync(
+			path.join(root, "packages/base/package.json"),
+			JSON.stringify({ name: "base", scripts: { build: "echo base" } }),
+		);
+		writeFileSync(
+			path.join(root, "packages/left/package.json"),
+			JSON.stringify({
+				name: "left",
+				scripts: { build: "echo left" },
+				dependencies: { base: "workspace:*" },
+			}),
+		);
+		writeFileSync(
+			path.join(root, "packages/right/package.json"),
+			JSON.stringify({
+				name: "right",
+				scripts: { build: "echo right" },
+				dependencies: { base: "workspace:*" },
+			}),
+		);
+		const g = await loadPackageGraph(root);
+		const affected = computeAffectedPackages(new Set(["base"]), g);
+		expect(affected.has("base")).toBe(true);
+		expect(affected.has("left")).toBe(true);
+		expect(affected.has("right")).toBe(true);
 	});
 });
 

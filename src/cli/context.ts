@@ -8,6 +8,7 @@ import { detectProject } from "../core/detection/project.js";
 import type { RunOptions } from "../core/execution/runner.js";
 import { priorityFromConfig } from "../core/execution/scheduler.js";
 import {
+	computeAffectedPackages,
 	loadPackageGraph,
 	tasksFromPackageGraph,
 } from "../core/graph/package-graph.js";
@@ -43,6 +44,7 @@ export async function createContext(
 	}
 
 	let packageScopes: string[] | undefined;
+	let affectedPackages: ReadonlySet<string> | undefined;
 	if (config.git?.enabled !== false) {
 		const graph =
 			pkgGraph ??
@@ -59,9 +61,13 @@ export async function createContext(
 		// empty -> no packages matched (single-pkg repo or no changes yet);
 		//          skip filtering to avoid hashing zero files
 		if (changed !== null && changed.size > 0) {
+			// Cascade: a package is affected if it changed directly OR if any
+			// package it depends on changed (transitively).
+			const affected = computeAffectedPackages(changed, graph);
 			packageScopes = graph.packages
-				.filter((p) => changed.has(p.name))
+				.filter((p) => affected.has(p.name))
 				.map((p) => p.dir);
+			affectedPackages = affected;
 		}
 	}
 
@@ -120,6 +126,7 @@ export async function createContext(
 		cacheDir,
 		plugins,
 		...(packageScopes !== undefined ? { packageScopes } : {}),
+		...(affectedPackages !== undefined ? { affectedPackages } : {}),
 		...(lintOnly ? { lintOnly: true } : {}),
 	};
 }

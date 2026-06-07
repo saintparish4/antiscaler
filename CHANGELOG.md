@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-07
+
+### Added
+
+- **Workspace cascade** (`computeAffectedPackages`): when package A changes, any
+  package that declares A as a workspace dependency (directly or transitively) is
+  automatically included in the affected set. The `packageScopes` hash filter now
+  covers the full cascade, so dependents are hashed against their own files rather
+  than against an empty scope.
+- **`antiscaler build --affected`**: runs only the tasks belonging to packages in
+  the cascade-expanded affected set. Non-affected tasks are recorded as `SKIP` in
+  the insight table. Composable with the existing `lintOnly` filter.
+- Integration test: two-commit git fixture validates that changing `packages/utils`
+  cascades to `web` and `api` while `docs` (no utils dependency) is skipped.
+
 ## [0.7.0] - 2026-06-04
 
 ### Added
