@@ -17,13 +17,13 @@ afterEach(() => {
 });
 
 describe("registerInitAction", () => {
-	it("creates antiscale.config.ts when none exists", () => {
+	it("creates antiscale.config.ts when none exists", async () => {
 		const dir = makeTmpDir();
 		const origCwd = process.cwd;
 		process.cwd = () => dir;
 		try {
 			const log = vi.spyOn(console, "log").mockImplementation(() => {});
-			registerInitAction();
+			await registerInitAction();
 			expect(existsSync(path.join(dir, "antiscale.config.ts"))).toBe(true);
 			expect(log).toHaveBeenCalledWith(expect.stringMatching(/Created/));
 		} finally {
@@ -31,28 +31,28 @@ describe("registerInitAction", () => {
 		}
 	});
 
-	it("does not overwrite existing config", () => {
+	it("does not overwrite existing config", async () => {
 		const dir = makeTmpDir();
 		writeFileSync(path.join(dir, "antiscale.config.ts"), "// existing");
 		const origCwd = process.cwd;
 		process.cwd = () => dir;
 		try {
 			const log = vi.spyOn(console, "log").mockImplementation(() => {});
-			registerInitAction();
+			await registerInitAction();
 			expect(log).toHaveBeenCalledWith(expect.stringMatching(/already exists/));
 		} finally {
 			process.cwd = origCwd;
 		}
 	});
 
-	it("does not overwrite when antiscale.config.json exists", () => {
+	it("does not overwrite when antiscale.config.json exists", async () => {
 		const dir = makeTmpDir();
 		writeFileSync(path.join(dir, "antiscale.config.json"), "{}");
 		const origCwd = process.cwd;
 		process.cwd = () => dir;
 		try {
 			const log = vi.spyOn(console, "log").mockImplementation(() => {});
-			registerInitAction();
+			await registerInitAction();
 			expect(log).toHaveBeenCalledWith(
 				expect.stringMatching(/antiscale\.config\.json.*already exists/),
 			);

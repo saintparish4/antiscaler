@@ -80,4 +80,17 @@ export const antiscaleConfigSchema = z.object({
 			lintOnlyForNonCritical: z.boolean().default(false),
 		})
 		.optional(),
+}).superRefine((val, ctx) => {
+	const taskNames = new Set(Object.keys(val.tasks));
+	for (const [name, cfg] of Object.entries(val.tasks)) {
+		for (const dep of cfg.dependsOn ?? []) {
+			if (!taskNames.has(dep)) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["tasks", name, "dependsOn"],
+					message: `references unknown task "${dep}" — add it to config.tasks or remove the reference`,
+				});
+			}
+		}
+	}
 });

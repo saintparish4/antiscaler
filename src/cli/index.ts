@@ -27,12 +27,14 @@ program
 		"--affected",
 		"run only packages affected by changes since baseRef (includes cascade dependents)",
 	)
+	.option("--dry-run", "print the task plan without executing")
 	.action(
 		async (
 			opts: ConcurrencyOpts & {
 				scope?: string;
 				trace?: string;
 				affected?: boolean;
+				dryRun?: boolean;
 			},
 		) => {
 			const { registerBuildAction } = await import("./commands/build.js");
@@ -42,6 +44,7 @@ program
 				...(concurrency !== undefined && { concurrency }),
 				...(scope !== undefined && { scope }),
 				...(opts.affected && { affected: true }),
+				...(opts.dryRun && { dryRun: true }),
 			});
 		},
 	);
@@ -71,10 +74,14 @@ program
 		"-c, --concurrency <n>",
 		"max tasks to run concurrently per DAG level",
 	)
-	.action(async (opts: ConcurrencyOpts) => {
+	.option("--dry-run", "print the task plan without executing")
+	.action(async (opts: ConcurrencyOpts & { dryRun?: boolean }) => {
 		const { registerDevAction } = await import("./commands/dev.js");
 		const concurrency = parseConcurrency(opts);
-		await registerDevAction(concurrency !== undefined ? { concurrency } : {});
+		await registerDevAction({
+			...(concurrency !== undefined && { concurrency }),
+			...(opts.dryRun && { dryRun: true }),
+		});
 	});
 
 program
@@ -84,13 +91,14 @@ program
 		"-c, --concurrency <n>",
 		"max tasks to run concurrently per DAG level",
 	)
-	.action(async (taskName: string, opts: ConcurrencyOpts) => {
+	.option("--dry-run", "print the task plan without executing")
+	.action(async (taskName: string, opts: ConcurrencyOpts & { dryRun?: boolean }) => {
 		const { registerRunAction } = await import("./commands/run.js");
 		const concurrency = parseConcurrency(opts);
-		await registerRunAction(
-			taskName,
-			concurrency !== undefined ? { concurrency } : {},
-		);
+		await registerRunAction(taskName, {
+			...(concurrency !== undefined && { concurrency }),
+			...(opts.dryRun && { dryRun: true }),
+		});
 	});
 
 program
@@ -99,6 +107,14 @@ program
 	.action(async () => {
 		const { registerInitAction } = await import("./commands/init.js");
 		await registerInitAction();
+	});
+
+program
+	.command("doctor")
+	.description("Validate config, check traces, and diagnose common issues")
+	.action(async () => {
+		const { registerDoctorAction } = await import("./commands/doctor.js");
+		await registerDoctorAction();
 	});
 
 program
@@ -187,6 +203,7 @@ prCmd
 program.parseAsync(process.argv).catch((err: unknown) => {
 	if (err instanceof AntiscaleError) {
 		console.error(`[${err.code}] ${err.message}`);
+		if (err.hint) console.error(`  Hint: ${err.hint}`);
 		process.exit(1);
 	}
 	console.error("Unexpected error — please file a bug:", err);

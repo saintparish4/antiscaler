@@ -8,6 +8,7 @@ import type {
 	TaskConfig,
 	TaskGraph,
 } from "../../types/index.js";
+import type { OnTaskEvent } from "../progress/reporter.js";
 import type { RemoteCacheAdapter } from "../cache/remote-adapter.js";
 import { hashTaskInputs } from "../cache/hashing.js";
 import type { CacheFile } from "../cache/store.js";
@@ -39,6 +40,8 @@ export interface RunOptions {
 	taskFilter?: (taskName: string) => boolean;
 	/** Optional remote cache backend for cross-machine cache sharing. */
 	remoteCache?: RemoteCacheAdapter;
+	/** Called on each task lifecycle change — use createProgressReporter() for live output. */
+	onTaskEvent?: OnTaskEvent;
 }
 
 export interface TaskRunResult {
@@ -136,6 +139,7 @@ async function runOneTask(
 				durationMs: 0,
 				cacheHit: true,
 			};
+			options.onTaskEvent?.({ task: taskName, status: "cached" });
 			await plugins.runOnAfterExecute(taskName, result);
 			return result;
 		}
@@ -162,6 +166,7 @@ async function runOneTask(
 				durationMs: 0,
 				cacheHit: true,
 			};
+			options.onTaskEvent?.({ task: taskName, status: "cached" });
 			if (plugins) await plugins.runOnAfterExecute(taskName, result);
 			return result;
 		}
@@ -178,13 +183,20 @@ async function runOneTask(
 					cacheHit: true,
 					remoteHit: true,
 				};
+				options.onTaskEvent?.({ task: taskName, status: "cached" });
 				if (plugins) await plugins.runOnAfterExecute(taskName, result);
 				return result;
 			}
 		}
 
+		options.onTaskEvent?.({ task: taskName, status: "running" });
 		const start = Date.now();
-		await executor(taskName, taskCfg, options.pm, options.cwd);
+		try {
+			await executor(taskName, taskCfg, options.pm, options.cwd);
+		} catch (err) {
+			options.onTaskEvent?.({ task: taskName, status: "failed" });
+			throw err;
+		}
 		const durationMs = Date.now() - start;
 
 		const entry = { hash, lastRun: Date.now(), lastDurationMs: durationMs };
@@ -204,14 +216,21 @@ async function runOneTask(
 			durationMs,
 			cacheHit: false,
 		};
+		options.onTaskEvent?.({ task: taskName, status: "done", durationMs });
 		if (plugins) await plugins.runOnAfterExecute(taskName, result);
 		return result;
 	}
 
 	// Strict mode or no-inputs task: always execute, but still
 	// record run metadata so `insight` shows history for these tasks.
+	options.onTaskEvent?.({ task: taskName, status: "running" });
 	const start = Date.now();
-	await executor(taskName, taskCfg, options.pm, options.cwd);
+	try {
+		await executor(taskName, taskCfg, options.pm, options.cwd);
+	} catch (err) {
+		options.onTaskEvent?.({ task: taskName, status: "failed" });
+		throw err;
+	}
 	const durationMs = Date.now() - start;
 
 	cache.tasks[taskName] = {
@@ -224,6 +243,7 @@ async function runOneTask(
 		durationMs,
 		cacheHit: false,
 	};
+	options.onTaskEvent?.({ task: taskName, status: "done", durationMs });
 	if (plugins) await plugins.runOnAfterExecute(taskName, result);
 	return result;
 }
