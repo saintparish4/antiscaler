@@ -96,6 +96,12 @@ Remote cache backend. See [remote-cache.md](./remote-cache.md) for full setup in
 | `url` | `string` | — | Base URL (`{url}/{hash}` for each entry) |
 | `headers` | `Record<string, string>` | `{}` | Request headers (e.g. `Authorization`) |
 | `timeout` | `number` | `10000` | Per-request timeout in ms |
+| `maxResponseBytes` | `number` | `1048576` | Max GET response body (1 MiB); oversized responses are rejected |
+
+> **Never hard-code secrets here.** `headers` values such as `Authorization`
+> tokens must be read from environment variables — see the security note in
+> [remote-cache.md](./remote-cache.md). The config file is committed to source
+> control.
 
 #### S3 backend options
 

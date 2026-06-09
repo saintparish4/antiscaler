@@ -1,7 +1,10 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import pc from "picocolors";
-import { findAntiscaleConfigPath, loadConfig } from "../../core/config/loader.js";
+import {
+	findAntiscaleConfigPath,
+	loadConfig,
+} from "../../core/config/loader.js";
 
 interface CheckResult {
 	ok: boolean;
@@ -58,7 +61,10 @@ async function dirSizeBytes(dir: string): Promise<number> {
 	return total;
 }
 
-async function checkCacheSize(cwd: string, cacheDir: string): Promise<CheckResult> {
+async function checkCacheSize(
+	cwd: string,
+	cacheDir: string,
+): Promise<CheckResult> {
 	const absCache = path.resolve(cwd, cacheDir);
 	const bytes = await dirSizeBytes(absCache);
 	const mb = bytes / (1024 * 1024);
@@ -67,7 +73,8 @@ async function checkCacheSize(cwd: string, cacheDir: string): Promise<CheckResul
 			ok: false,
 			warn: true,
 			label: `Cache directory is ${mb.toFixed(0)} MB`,
-			detail: "Consider setting `cache.ttlDays` to evict old entries automatically.",
+			detail:
+				"Consider setting `cache.ttlDays` to evict old entries automatically.",
 		};
 	}
 	return { ok: true, label: `Cache directory is ${mb.toFixed(0)} MB` };
@@ -83,7 +90,8 @@ async function checkTraces(cwd: string): Promise<CheckResult> {
 			ok: false,
 			warn: true,
 			label: "No trace sessions found",
-			detail: "Run `antiscaler trace` to record a session (needed for scope/criticalPaths features).",
+			detail:
+				"Run `antiscaler trace` to record a session (needed for scope/criticalPaths features).",
 		};
 	}
 	if (files.length === 0) {
@@ -113,7 +121,10 @@ export async function registerDoctorAction(): Promise<void> {
 			detail: "Run `antiscaler init` to create one.",
 		});
 	} else {
-		checks.push({ ok: true, label: `Config found: ${path.basename(configPath)}` });
+		checks.push({
+			ok: true,
+			label: `Config found: ${path.basename(configPath)}`,
+		});
 
 		let config: Awaited<ReturnType<typeof loadConfig>> | null = null;
 		try {

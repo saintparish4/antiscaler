@@ -178,8 +178,7 @@ describe("registerBuildAction", () => {
 		);
 
 		const GIT = "-c user.email=t@t.com -c user.name=T";
-		const run = (cmd: string) =>
-			execSync(cmd, { cwd: dir, stdio: "ignore" });
+		const run = (cmd: string) => execSync(cmd, { cwd: dir, stdio: "ignore" });
 		run("git init");
 		run(`git ${GIT} commit --allow-empty -m base`);
 		run("git add .");

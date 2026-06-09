@@ -92,14 +92,16 @@ program
 		"max tasks to run concurrently per DAG level",
 	)
 	.option("--dry-run", "print the task plan without executing")
-	.action(async (taskName: string, opts: ConcurrencyOpts & { dryRun?: boolean }) => {
-		const { registerRunAction } = await import("./commands/run.js");
-		const concurrency = parseConcurrency(opts);
-		await registerRunAction(taskName, {
-			...(concurrency !== undefined && { concurrency }),
-			...(opts.dryRun && { dryRun: true }),
-		});
-	});
+	.action(
+		async (taskName: string, opts: ConcurrencyOpts & { dryRun?: boolean }) => {
+			const { registerRunAction } = await import("./commands/run.js");
+			const concurrency = parseConcurrency(opts);
+			await registerRunAction(taskName, {
+				...(concurrency !== undefined && { concurrency }),
+				...(opts.dryRun && { dryRun: true }),
+			});
+		},
+	);
 
 program
 	.command("init")

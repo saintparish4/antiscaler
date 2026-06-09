@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-09
+
+First stable release. The public API surface — everything exported from
+`src/index.ts` (`defineConfig` and the config types) — is now covered by a
+semver stability guarantee: no breaking changes in minor or patch releases.
+
+### Added
+
+- **API stability declaration** — all public exports carry `@public` JSDoc
+  tags; the `import`/`./tracer` entry points are the supported surface.
+
+### Security
+
+- **Remote cache hardening** — entries fetched from a remote backend are now
+  shape-validated before use; a malformed or corrupt entry is treated as a
+  cache miss instead of throwing and failing the run.
+- **HTTP cache adapter** caps response bodies to guard against a hostile or
+  buggy endpoint exhausting memory.
+- **`git diff` invocation** now passes a `--` path terminator so a crafted
+  base ref can never be interpreted as a git option (argument-injection
+  hardening).
+
+### Changed
+
+- Documentation now steers users away from committing remote-cache secrets to
+  `antiscale.config.ts`, recommending environment variables / the AWS
+  credential chain instead.
+
+## [0.9.3] - 2026-06-09
+
+### Security
+
+- **Glob input hardening** — `hashTaskInputs` now rejects absolute patterns and
+  any pattern containing a `..` segment, so task `inputs` cannot be used to read
+  files outside the project root.
+
 ## [0.9.2] - 2026-06-08
 
 ### Added
@@ -223,7 +259,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `antiscaler --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/saintparish4/antiscaler/compare/v0.9.3...v1.0.0
+[0.9.3]: https://github.com/saintparish4/antiscaler/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/saintparish4/antiscaler/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/saintparish4/antiscaler/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/saintparish4/antiscaler/compare/v0.8.0...v0.9.0

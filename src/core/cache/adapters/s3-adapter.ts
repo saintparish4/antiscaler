@@ -57,15 +57,23 @@ async function importS3(): Promise<S3ModuleLike> {
 export function createS3CacheAdapter(
 	options: S3CacheAdapterOptions,
 ): RemoteCacheAdapter {
-	const { bucket, prefix = "antiscaler/", region, endpoint, credentials } =
-		options;
+	const {
+		bucket,
+		prefix = "antiscaler/",
+		region,
+		endpoint,
+		credentials,
+	} = options;
 
 	// Lazily initialised — shared across all method calls on this adapter.
 	let statePromise:
 		| Promise<{ client: S3ClientLike; mod: S3ModuleLike }>
 		| undefined;
 
-	async function getState(): Promise<{ client: S3ClientLike; mod: S3ModuleLike }> {
+	async function getState(): Promise<{
+		client: S3ClientLike;
+		mod: S3ModuleLike;
+	}> {
 		if (statePromise === undefined) {
 			statePromise = importS3().then((mod) => {
 				const client = new mod.S3Client({

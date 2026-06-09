@@ -38,7 +38,10 @@ describe("HttpCacheAdapter.has()", () => {
 	});
 
 	it("throws CacheError when fetch throws (network error)", async () => {
-		vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")));
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockRejectedValue(new Error("ECONNREFUSED")),
+		);
 		const adapter = createHttpCacheAdapter({ url: BASE });
 		await expect(adapter.has("key")).rejects.toBeInstanceOf(CacheError);
 	});
@@ -81,6 +84,48 @@ describe("HttpCacheAdapter.get()", () => {
 		} catch (err) {
 			expect(String(err)).toContain("503");
 		}
+	});
+
+	it("reads a real (streaming) Response body under the cap", async () => {
+		const payload = new Uint8Array([9, 8, 7]);
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(new Response(payload, { status: 200 })),
+		);
+		const adapter = createHttpCacheAdapter({ url: BASE });
+		expect(await adapter.get("key1")).toEqual(payload);
+	});
+
+	it("rejects when Content-Length exceeds maxResponseBytes", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(
+				new Response(new Uint8Array([1, 2, 3, 4]), {
+					status: 200,
+					headers: { "content-length": "4" },
+				}),
+			),
+		);
+		const adapter = createHttpCacheAdapter({ url: BASE, maxResponseBytes: 2 });
+		await expect(adapter.get("big")).rejects.toBeInstanceOf(CacheError);
+	});
+
+	it("rejects when the streamed body exceeds maxResponseBytes (no Content-Length)", async () => {
+		// A ReadableStream with no Content-Length header — the bound must still
+		// be enforced while streaming, not just from the advertised length.
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new Uint8Array([1, 2]));
+				controller.enqueue(new Uint8Array([3, 4]));
+				controller.close();
+			},
+		});
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(new Response(stream, { status: 200 })),
+		);
+		const adapter = createHttpCacheAdapter({ url: BASE, maxResponseBytes: 3 });
+		await expect(adapter.get("stream")).rejects.toBeInstanceOf(CacheError);
 	});
 });
 

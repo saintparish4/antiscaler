@@ -26,7 +26,9 @@ export default defineConfig({
       type: "http",
       url: "https://cache.example.com",
       headers: {
-        Authorization: "Bearer my-token",
+        // Read the token from the environment — never hard-code it. See the
+        // security note below.
+        Authorization: `Bearer ${process.env.ANTISCALER_CACHE_TOKEN ?? ""}`,
       },
       timeout: 15000,
     },
@@ -40,6 +42,14 @@ export default defineConfig({
 | `url` | `string` | — | Base URL; each hash appended as `{url}/{hash}` |
 | `headers` | `Record<string, string>` | `{}` | Request headers sent with every request |
 | `timeout` | `number` (ms) | `10000` | Per-request timeout |
+| `maxResponseBytes` | `number` | `1048576` (1 MiB) | Caps the GET response body; oversized responses are rejected |
+
+> **Security: never commit secrets to `antiscale.config.ts`.** The config file
+> is checked into source control, so any `Authorization` token, API key, or
+> password written there will leak. Read credentials from environment variables
+> instead (as shown above) and inject them via your CI secret store or a local
+> `.env` that is git-ignored. The same applies to the S3 backend, which by
+> design has no `credentials` field and relies on the AWS credential chain.
 
 ### S3 backend
 

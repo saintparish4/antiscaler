@@ -67,7 +67,10 @@ export function writeCacheSync(cacheDir: string, cache: CacheFile): void {
  * Returns a new CacheFile with entries whose `lastRun` is older than
  * `ttlDays` days removed. Does not mutate the original.
  */
-export function evictStaleEntries(cache: CacheFile, ttlDays: number): CacheFile {
+export function evictStaleEntries(
+	cache: CacheFile,
+	ttlDays: number,
+): CacheFile {
 	const cutoff = Date.now() - ttlDays * 24 * 60 * 60 * 1_000;
 	const tasks: CacheFile["tasks"] = {};
 	for (const [name, entry] of Object.entries(cache.tasks)) {

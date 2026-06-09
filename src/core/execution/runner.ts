@@ -8,12 +8,17 @@ import type {
 	TaskConfig,
 	TaskGraph,
 } from "../../types/index.js";
-import type { OnTaskEvent } from "../progress/reporter.js";
-import type { RemoteCacheAdapter } from "../cache/remote-adapter.js";
 import { hashTaskInputs } from "../cache/hashing.js";
+import type { RemoteCacheAdapter } from "../cache/remote-adapter.js";
 import type { CacheFile } from "../cache/store.js";
-import { evictStaleEntries, readCache, writeCache, writeCacheSync } from "../cache/store.js";
+import {
+	evictStaleEntries,
+	readCache,
+	writeCache,
+	writeCacheSync,
+} from "../cache/store.js";
 import type { PluginRegistry } from "../plugins/registry.js";
+import type { OnTaskEvent } from "../progress/reporter.js";
 import type { TaskExecutor } from "./executor.js";
 import { executeTask } from "./executor.js";
 import { runScheduled } from "./scheduler.js";
@@ -70,8 +75,32 @@ function serializeRemoteEntry(entry: RemoteEntry): Uint8Array {
 	return textEncoder.encode(JSON.stringify(entry));
 }
 
-function parseRemoteEntry(bytes: Uint8Array): RemoteEntry {
-	return JSON.parse(textDecoder.decode(bytes)) as RemoteEntry;
+/**
+ * Parses bytes fetched from a remote cache backend. Remote data is untrusted:
+ * a malformed payload (corrupt bytes, a hostile server, a schema change) must
+ * never crash the run, so this returns `null` — treated as a cache miss — for
+ * anything that doesn't match the expected shape rather than throwing.
+ */
+function parseRemoteEntry(bytes: Uint8Array): RemoteEntry | null {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(textDecoder.decode(bytes));
+	} catch {
+		return null;
+	}
+	if (typeof parsed !== "object" || parsed === null) return null;
+	const obj = parsed as Record<string, unknown>;
+	if (typeof obj["lastRun"] !== "number" || !Number.isFinite(obj["lastRun"])) {
+		return null;
+	}
+	const entry: RemoteEntry = { lastRun: obj["lastRun"] };
+	if (
+		typeof obj["lastDurationMs"] === "number" &&
+		Number.isFinite(obj["lastDurationMs"])
+	) {
+		entry.lastDurationMs = obj["lastDurationMs"];
+	}
+	return entry;
 }
 
 /**
@@ -171,11 +200,18 @@ async function runOneTask(
 			return result;
 		}
 
-		// Local miss — check remote cache before running the task.
+		// Local miss — check remote cache before running the task. A remote
+		// read failure is non-fatal (symmetric with the write path below): we
+		// fall through and run the task locally instead of breaking the build.
 		if (options.remoteCache !== undefined) {
-			const remoteBytes = await options.remoteCache.get(hash);
-			if (remoteBytes !== null) {
-				const remoteEntry = parseRemoteEntry(remoteBytes);
+			let remoteEntry: RemoteEntry | null = null;
+			try {
+				const remoteBytes = await options.remoteCache.get(hash);
+				if (remoteBytes !== null) remoteEntry = parseRemoteEntry(remoteBytes);
+			} catch {
+				remoteEntry = null;
+			}
+			if (remoteEntry !== null) {
 				cache.tasks[taskName] = { hash, ...remoteEntry };
 				const result: TaskRunResult = {
 					task: taskName,

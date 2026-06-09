@@ -36,5 +36,7 @@ export async function registerRunAction(
 
 	const results = await runTasksWithDeps(taskName, ctx.graph, runOptions);
 	const cache = await readCache(ctx.cacheDir);
-	printInsights(computeInsights(results, cache, ctx.config.cache.costPerMissMs));
+	printInsights(
+		computeInsights(results, cache, ctx.config.cache.costPerMissMs),
+	);
 }

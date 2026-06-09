@@ -126,7 +126,10 @@ describe("S3CacheAdapter.set()", () => {
 	it("calls PutObjectCommand with correct Bucket, Key, Body, and ContentType", async () => {
 		mockSend.mockResolvedValue({});
 		const bytes = new Uint8Array([1, 2]);
-		const adapter = createS3CacheAdapter({ bucket: "my-bucket", prefix: "test/" });
+		const adapter = createS3CacheAdapter({
+			bucket: "my-bucket",
+			prefix: "test/",
+		});
 		await adapter.set("key2", bytes);
 		expect(mockSend).toHaveBeenCalledOnce();
 		const cmd = mockSend.mock.calls[0]?.[0] as {

@@ -1,0 +1,18 @@
+# Normalize line endings on commit. Working trees on Windows/WSL may check out
+# CRLF, but everything stored in git stays LF — this prevents the recurring
+# whole-file CRLF churn diffs across the Windows/WSL boundary.
+* text=auto eol=lf
+
+# Shell/PowerShell scripts: keep LF in the repo, but PowerShell on Windows is
+# happy with either. Force LF for consistency.
+*.ps1 text eol=lf
+*.sh text eol=lf
+
+# Explicit binaries — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

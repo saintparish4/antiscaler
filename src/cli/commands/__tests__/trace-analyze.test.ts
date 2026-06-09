@@ -2,11 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { TraceFile } from "../../../tracer/types.js";
 import { loadPackageGraph } from "../../../core/graph/package-graph.js";
+import type { TraceFile } from "../../../tracer/types.js";
 
 vi.mock("../../../core/graph/package-graph.js", () => ({
-	loadPackageGraph: vi.fn().mockResolvedValue({ packages: [], edges: new Map() }),
+	loadPackageGraph: vi
+		.fn()
+		.mockResolvedValue({ packages: [], edges: new Map() }),
 	tasksFromPackageGraph: vi.fn(() => ({})),
 }));
 
@@ -58,13 +60,12 @@ function makeTrace(overrides: Partial<TraceFile> = {}): TraceFile {
 describe("registerTraceAnalyzeAction", () => {
 	let cwd: string;
 	let logs: string[];
-	let _consoleSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		cwd = makeTmpDir();
 		writeConfig(cwd);
 		logs = [];
-		_consoleSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+		vi.spyOn(console, "log").mockImplementation((...args) => {
 			logs.push(args.map(String).join(" "));
 		});
 	});
@@ -202,7 +203,9 @@ describe("registerTraceAction", () => {
 		} finally {
 			process.chdir(origCwd);
 			if (before === undefined) {
-				delete process.env["ANTISCALER_TRACE"];
+				// Truly unset (not `= undefined`, which would leak the string
+				// "undefined" into later tests) without the `delete` operator.
+				Reflect.deleteProperty(process.env, "ANTISCALER_TRACE");
 			} else {
 				process.env["ANTISCALER_TRACE"] = before;
 			}
@@ -213,12 +216,11 @@ describe("registerTraceAction", () => {
 describe("registerTraceAnalyzeAction (with packages)", () => {
 	let cwd: string;
 	let logs: string[];
-	let _consoleSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		cwd = makeTmpDir();
 		logs = [];
-		_consoleSpy = vi.spyOn(console, "log").mockImplementation((...args) => {
+		vi.spyOn(console, "log").mockImplementation((...args) => {
 			logs.push(args.map(String).join(" "));
 		});
 		vi.mocked(loadPackageGraph).mockResolvedValue({

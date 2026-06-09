@@ -1,9 +1,9 @@
 import type * as z from "zod";
+import type { RemoteCacheAdapter } from "../core/cache/remote-adapter.js";
 import type {
 	antiscaleConfigSchema,
 	taskConfigSchema,
 } from "../core/config/schema.js";
-import type { RemoteCacheAdapter } from "../core/cache/remote-adapter.js";
 import type { PluginRegistry } from "../core/plugins/registry.js";
 
 // User-facing config (the object passed to defineConfig

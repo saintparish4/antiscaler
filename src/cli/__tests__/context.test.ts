@@ -171,14 +171,8 @@ describe("createContext (cascade / affectedPackages)", () => {
 		);
 		writeMinimalConfig(dir, { workspace: { enabled: true }, tasks: {} });
 
-		const GIT = [
-			"-c",
-			"user.email=t@t.com",
-			"-c",
-			"user.name=T",
-		].join(" ");
-		const run = (cmd: string) =>
-			execSync(cmd, { cwd: dir, stdio: "ignore" });
+		const GIT = ["-c", "user.email=t@t.com", "-c", "user.name=T"].join(" ");
+		const run = (cmd: string) => execSync(cmd, { cwd: dir, stdio: "ignore" });
 		run("git init");
 		run(`git ${GIT} commit --allow-empty -m base`);
 		run("git add .");

@@ -19,9 +19,13 @@ export async function getChangedFiles(
 	const { cwd, baseRef = "HEAD~1" } = options;
 	try {
 		const { execa } = await import("execa");
-		const { stdout } = await execa("git", ["diff", "--name-only", baseRef], {
-			cwd,
-		});
+		// The trailing `--` terminates option parsing so a crafted baseRef (e.g.
+		// one starting with `-`) is always treated as a revision, never a git flag.
+		const { stdout } = await execa(
+			"git",
+			["diff", "--name-only", baseRef, "--"],
+			{ cwd },
+		);
 		return stdout
 			.split("\n")
 			.map((s) => s.trim())
