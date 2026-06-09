@@ -6,5 +6,5 @@ export async function registerInsightAction(): Promise<void> {
 
 	const ctx = await createContext();
 	const cache = await readCache(ctx.cacheDir);
-	printInsights(computeInsights([], cache));
+	printInsights(computeInsights([], cache, ctx.config.cache.costPerMissMs));
 }

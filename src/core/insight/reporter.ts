@@ -52,6 +52,12 @@ export function printInsights(summary: InsightSummary): void {
 	const pct = (summary.cacheHitRate * 100).toFixed(0);
 	const footer = `\nTotal: ${summary.totalDurationMs}ms  Cache hit rate: ${pct}%`;
 	console.log(isTTY ? pc.dim(footer) : footer);
+
+	if (summary.remoteHits > 0) {
+		const saved = summary.estimatedTimeSavedByRemoteMs;
+		const remoteFooter = `Remote cache hits: ${summary.remoteHits}  Estimated time saved: ${saved}ms`;
+		console.log(isTTY ? pc.dim(remoteFooter) : remoteFooter);
+	}
 }
 
 export function printEnv(

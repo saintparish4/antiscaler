@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-08
+
+### Added
+
+- **Remote cache** (`cache.remote`): cache hits now survive across machines
+  (CI ↔ local, CI run A ↔ CI run B). Configure a backend in `antiscale.config.ts`:
+  - `type: "http"` — generic presigned-URL backend; works with S3, GCS, R2, or
+    any server that accepts `GET`/`PUT`/`HEAD` on `{baseUrl}/{hash}`. Supports
+    custom request headers (e.g. `Authorization`) and a configurable timeout.
+  - `type: "s3"` — native AWS S3 backend (lazy-imports `@aws-sdk/client-s3`
+    on first use, so the dep is only required when this backend is active).
+    Supports custom endpoint for R2/MinIO/localstack, explicit credentials, and
+    a configurable key prefix.
+- **Remote-hit tracking**: `TaskRunResult` gains `remoteHit?: boolean`. The
+  `antiscaler insight` table now shows a footer line:
+  `Remote cache hits: N  Estimated time saved: Xms`.
+- **Cost modeling** (`cache.costPerMissMs`): configuration hook for annotating
+  the expected cost of a cache miss; surfaced in the insight summary.
+- **TTL eviction** (`cache.ttlDays`): local cache entries older than the
+  specified number of days are evicted at the start of every run.
+
 ## [0.8.0] - 2026-06-07
 
 ### Added

@@ -2,8 +2,12 @@ import { genericAdapter } from "../adapters/frameworks/generic.js";
 import { nextAdapter, nextPlugin } from "../adapters/frameworks/next.js";
 import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
 import { viteAdapter } from "../adapters/frameworks/vite.js";
+import { createHttpCacheAdapter } from "../core/cache/adapters/http-adapter.js";
+import { createS3CacheAdapter } from "../core/cache/adapters/s3-adapter.js";
 import { getChangedFiles, getChangedPackages } from "../core/cache/git-diff.js";
+import type { RemoteCacheAdapter } from "../core/cache/remote-adapter.js";
 import { loadConfig } from "../core/config/loader.js";
+import { ConfigError } from "../core/errors.js";
 import { detectProject } from "../core/detection/project.js";
 import type { RunOptions } from "../core/execution/runner.js";
 import { priorityFromConfig } from "../core/execution/scheduler.js";
@@ -16,7 +20,40 @@ import { buildGraph } from "../core/graph/planner.js";
 import { PluginRegistry } from "../core/plugins/registry.js";
 import { isCriticalChange } from "../core/scope/critical-path.js";
 import { loadTrace } from "../core/scope/trace-loader.js";
-import type { AntiscaleContext } from "../types/index.js";
+import type { AntiscaleContext, ResolvedAntiscaleConfig } from "../types/index.js";
+
+function buildRemoteAdapter(
+	config: ResolvedAntiscaleConfig,
+): RemoteCacheAdapter | undefined {
+	const remote = config.cache.remote;
+	if (remote === undefined) return undefined;
+
+	if (remote.type === "http") {
+		if (remote.url === undefined) {
+			throw new ConfigError(
+				"cache.remote.url is required when cache.remote.type is \"http\"",
+			);
+		}
+		return createHttpCacheAdapter({
+			url: remote.url,
+			...(remote.headers !== undefined ? { headers: remote.headers } : {}),
+			...(remote.timeout !== undefined ? { timeout: remote.timeout } : {}),
+		});
+	}
+
+	// type === "s3"
+	if (remote.bucket === undefined) {
+		throw new ConfigError(
+			"cache.remote.bucket is required when cache.remote.type is \"s3\"",
+		);
+	}
+	return createS3CacheAdapter({
+		bucket: remote.bucket,
+		...(remote.prefix !== undefined ? { prefix: remote.prefix } : {}),
+		...(remote.region !== undefined ? { region: remote.region } : {}),
+		...(remote.endpoint !== undefined ? { endpoint: remote.endpoint } : {}),
+	});
+}
 
 export async function createContext(
 	cwd: string = process.cwd(),
@@ -100,6 +137,7 @@ export async function createContext(
 	}
 
 	const cacheDir = config.cache.directory;
+	const remoteCache = buildRemoteAdapter(config);
 
 	const plugins = new PluginRegistry();
 	plugins.register(wrapFrameworkAsPlugin(nextAdapter));
@@ -128,6 +166,7 @@ export async function createContext(
 		...(packageScopes !== undefined ? { packageScopes } : {}),
 		...(affectedPackages !== undefined ? { affectedPackages } : {}),
 		...(lintOnly ? { lintOnly: true } : {}),
+		...(remoteCache !== undefined ? { remoteCache } : {}),
 	};
 }
 
@@ -165,5 +204,6 @@ export function toRunOptions(
 		...(ctx.lintOnly
 			? { taskFilter: (name: string) => /lint/i.test(name) }
 			: {}),
+		...(ctx.remoteCache !== undefined ? { remoteCache: ctx.remoteCache } : {}),
 	};
 }

@@ -19,5 +19,5 @@ export async function registerRunAction(
 		toRunOptions(ctx, opts),
 	);
 	const cache = await readCache(ctx.cacheDir);
-	printInsights(computeInsights(results, cache));
+	printInsights(computeInsights(results, cache, ctx.config.cache.costPerMissMs));
 }

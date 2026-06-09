@@ -49,5 +49,5 @@ export async function registerBuildAction(
 
 	const results = await runTasksWithDeps("build", ctx.graph, runOptions);
 	const cache = await readCache(ctx.cacheDir);
-	printInsights(computeInsights(results, cache));
+	printInsights(computeInsights(results, cache, ctx.config.cache.costPerMissMs));
 }

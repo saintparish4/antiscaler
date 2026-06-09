@@ -8,9 +8,10 @@ import type {
 	TaskConfig,
 	TaskGraph,
 } from "../../types/index.js";
+import type { RemoteCacheAdapter } from "../cache/remote-adapter.js";
 import { hashTaskInputs } from "../cache/hashing.js";
 import type { CacheFile } from "../cache/store.js";
-import { readCache, writeCache, writeCacheSync } from "../cache/store.js";
+import { evictStaleEntries, readCache, writeCache, writeCacheSync } from "../cache/store.js";
 import type { PluginRegistry } from "../plugins/registry.js";
 import type { TaskExecutor } from "./executor.js";
 import { executeTask } from "./executor.js";
@@ -36,6 +37,8 @@ export interface RunOptions {
 	 * recorded as skipped (durationMs 0, cacheHit false, skipped true).
 	 */
 	taskFilter?: (taskName: string) => boolean;
+	/** Optional remote cache backend for cross-machine cache sharing. */
+	remoteCache?: RemoteCacheAdapter;
 }
 
 export interface TaskRunResult {
@@ -44,10 +47,28 @@ export interface TaskRunResult {
 	cacheHit: boolean;
 	/** True when the task was filtered out by taskFilter (not actually run). */
 	skipped?: boolean;
+	/** True when the cache hit came from the remote backend (not local). */
+	remoteHit?: boolean;
 }
 
 export function defaultConcurrency(): number {
 	return Math.max(1, os.cpus().length - 1);
+}
+
+interface RemoteEntry {
+	lastRun: number;
+	lastDurationMs?: number;
+}
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+function serializeRemoteEntry(entry: RemoteEntry): Uint8Array {
+	return textEncoder.encode(JSON.stringify(entry));
+}
+
+function parseRemoteEntry(bytes: Uint8Array): RemoteEntry {
+	return JSON.parse(textDecoder.decode(bytes)) as RemoteEntry;
 }
 
 /**
@@ -145,15 +166,38 @@ async function runOneTask(
 			return result;
 		}
 
+		// Local miss — check remote cache before running the task.
+		if (options.remoteCache !== undefined) {
+			const remoteBytes = await options.remoteCache.get(hash);
+			if (remoteBytes !== null) {
+				const remoteEntry = parseRemoteEntry(remoteBytes);
+				cache.tasks[taskName] = { hash, ...remoteEntry };
+				const result: TaskRunResult = {
+					task: taskName,
+					durationMs: 0,
+					cacheHit: true,
+					remoteHit: true,
+				};
+				if (plugins) await plugins.runOnAfterExecute(taskName, result);
+				return result;
+			}
+		}
+
 		const start = Date.now();
 		await executor(taskName, taskCfg, options.pm, options.cwd);
 		const durationMs = Date.now() - start;
 
-		cache.tasks[taskName] = {
-			hash,
-			lastRun: Date.now(),
-			lastDurationMs: durationMs,
-		};
+		const entry = { hash, lastRun: Date.now(), lastDurationMs: durationMs };
+		cache.tasks[taskName] = entry;
+
+		// Push to remote so other machines benefit from this run.
+		if (options.remoteCache !== undefined) {
+			try {
+				await options.remoteCache.set(hash, serializeRemoteEntry(entry));
+			} catch {
+				// Remote write failure is non-fatal; local cache is already updated.
+			}
+		}
 
 		const result: TaskRunResult = {
 			task: taskName,
@@ -191,7 +235,10 @@ export async function runTasksWithDeps(
 	executor: TaskExecutor = executeTask,
 ): Promise<TaskRunResult[]> {
 	const levels = graph.toLevels(target);
-	const cache: CacheFile = await readCache(options.cacheDir);
+	const rawCache = await readCache(options.cacheDir);
+	const ttlDays = options.config.cache.ttlDays;
+	const cache: CacheFile =
+		ttlDays !== undefined ? evictStaleEntries(rawCache, ttlDays) : rawCache;
 	const results: TaskRunResult[] = [];
 	const concurrency = options.concurrency ?? defaultConcurrency();
 

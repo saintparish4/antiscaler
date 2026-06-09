@@ -3,6 +3,7 @@ import type {
 	antiscaleConfigSchema,
 	taskConfigSchema,
 } from "../core/config/schema.js";
+import type { RemoteCacheAdapter } from "../core/cache/remote-adapter.js";
 import type { PluginRegistry } from "../core/plugins/registry.js";
 
 // User-facing config (the object passed to defineConfig
@@ -53,4 +54,6 @@ export interface AntiscaleContext {
 	 * lint tasks only when this flag is set.
 	 */
 	lintOnly?: boolean;
+	/** Optional remote cache adapter created from `config.cache.remote`. */
+	remoteCache?: RemoteCacheAdapter;
 }
