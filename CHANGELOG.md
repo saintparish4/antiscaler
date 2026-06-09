@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-06-08
+
+### Added
+
+- **Documentation** (`docs/`): complete documentation suite for new users.
+  - `docs/getting-started.md` — single-repo setup from scratch to first cache hit
+  - `docs/monorepo.md` — pnpm workspace setup, `--affected`, cascade scoping
+  - `docs/nextjs.md` — tracer plugin setup, lint-only fast path walkthrough
+  - `docs/vite.md` — Vite plugin setup
+  - `docs/pr-commands.md` — `pr check`, `pr replay`, `pr report`, and GitHub Actions integration
+  - `docs/remote-cache.md` — HTTP and S3 backend setup, TTL eviction, cost modeling
+  - `docs/config-reference.md` — every config key with type, default, and example
+  - `docs/troubleshooting.md` — top 10 problems and fixes
+- **README rewrite** — concise feature table, install + minimal config as copy-paste quick start, links to all guides.
+- **JSDoc** on all public exports in `src/index.ts`.
+
+## [0.9.1] - 2026-06-08
+
+### Added
+
+- **`antiscaler doctor`** — health-check command that validates Node version, locates and Zod-validates the config file, reports cache directory size with a warning threshold (500 MB), and checks for required trace sessions when `performance.criticalPaths` is configured.
+- **Interactive `init`** — `antiscaler init` now detects your package manager, framework, and existing `package.json` scripts, then walks through task configuration interactively (TTY). Falls back to a minimal non-interactive config in CI / piped contexts.
+- **Progress output** — running tasks now print a live progress line so long builds don't appear frozen.
+- **`--dry-run` flag** — pass `--dry-run` to any execution command (`build`, `run`, `dev`) to print what would run without executing anything.
+
 ## [0.9.0] - 2026-06-08
 
 ### Added
@@ -198,8 +223,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `antiscaler --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.6.0...HEAD
-[0.6.0]: https://github.com/saintparish4/antiscaler/compare/v0.5.1...v0.6.0
+[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/saintparish4/antiscaler/compare/v0.9.1...v0.9.2
+[0.9.1]: https://github.com/saintparish4/antiscaler/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/saintparish4/antiscaler/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/saintparish4/antiscaler/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/saintparish4/antiscaler/compare/v0.5.1...v0.7.0
 [0.5.1]: https://github.com/saintparish4/antiscaler/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/saintparish4/antiscaler/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/saintparish4/antiscaler/compare/v0.3.0...v0.4.0
