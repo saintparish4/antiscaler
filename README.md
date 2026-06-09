@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/antiscaler.svg)](https://www.npmjs.com/package/antiscaler)
 [![CI](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml)
 
-> **Beta software.** APIs and config shape may change between minor versions before 1.0. Pin to an exact version and review the [CHANGELOG](./CHANGELOG.md) before upgrading.
+> **Stable — v1.0.** The public API (everything exported from `antiscaler` and `antiscaler/tracer`) follows [semantic versioning](https://semver.org): no breaking changes in minor or patch releases. Review the [CHANGELOG](./CHANGELOG.md) before upgrading.
 
 Antiscaler is a build orchestrator that skips work you haven't changed. Drop a config file into any repo, declare your tasks and their inputs, and Antiscaler handles dependency ordering, content-based caching, and workspace scoping — without replacing your existing scripts.
 
