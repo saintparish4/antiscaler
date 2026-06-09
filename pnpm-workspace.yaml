@@ -1,0 +1,8 @@
+# pnpm 10+ settings (overrides moved here from package.json["pnpm"])
+# https://pnpm.io/pnpm-workspace_yaml
+
+overrides:
+  # vitest@4.x has a direct picomatch@>=4.0.0 <4.0.4 dep (ReDoS + method injection).
+  # Note: vite is vitest's peer dep and therefore NOT subject to overrides — it is
+  # pinned via the direct "vite" devDependency in package.json instead.
+  "vitest>picomatch": "^4.0.4"

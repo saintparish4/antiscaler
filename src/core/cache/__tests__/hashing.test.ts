@@ -20,6 +20,38 @@ afterEach(() => {
 	tmpDirs.length = 0;
 });
 
+describe("assertSafePattern (via hashTaskInputs)", () => {
+	it("rejects absolute patterns", async () => {
+		await expect(hashTaskInputs("/tmp", ["/etc/passwd"])).rejects.toThrow(
+			"Unsafe glob pattern",
+		);
+	});
+
+	it("rejects explicit traversal patterns", async () => {
+		await expect(hashTaskInputs("/tmp", ["../sibling"])).rejects.toThrow(
+			"Unsafe glob pattern",
+		);
+	});
+
+	it("rejects dot-slash-wrapped traversal patterns (bypass vector)", async () => {
+		await expect(
+			hashTaskInputs("/tmp", ["./../../etc/passwd"]),
+		).rejects.toThrow("Unsafe glob pattern");
+	});
+
+	it("rejects mid-path traversal patterns", async () => {
+		await expect(
+			hashTaskInputs("/tmp", ["src/foo/../../etc/passwd"]),
+		).rejects.toThrow("Unsafe glob pattern");
+	});
+
+	it("accepts normal relative patterns", async () => {
+		const dir = makeTmpDir();
+		writeFileSync(join(dir, "a.ts"), "x");
+		await expect(hashTaskInputs(dir, ["*.ts"])).resolves.toHaveLength(64);
+	});
+});
+
 describe("hashTaskInputs", () => {
 	it("stable output: hashing the same directory twice produces the same hash", async () => {
 		const dir = makeTmpDir();

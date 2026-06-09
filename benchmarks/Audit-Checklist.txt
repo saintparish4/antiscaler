@@ -1,3 +1,34 @@
+PHASE 7 — Security & Hardening Audit (v0.9.3)
+==============================================
+
+PATH TRAVERSAL AUDIT
+  Fixed: hashing.ts assertSafePattern() — previous check (`startsWith("..")`)
+  did not catch `./../../etc/passwd`-style patterns. Now normalises separators
+  and rejects any ".." segment in the split path. All other path.join() calls
+  operate on config-controlled input (developer-authored antiscale.config.ts),
+  which is in the trust boundary.
+
+COMMAND INJECTION AUDIT
+  executor.ts: execa() is called with an explicit args array (via string-argv),
+  never via shell. No shell interpolation of user-supplied strings. Safe.
+  git-diff.ts: execa("git", ["diff","--name-only", baseRef]) — array args, safe.
+
+INPUT VALIDATION COMPLETENESS
+  All config keys flow through antiscaleConfigSchema (Zod). Types, defaults,
+  and cross-field invariants (dependsOn references) are enforced. No raw
+  config values reach the filesystem or shell without schema processing.
+
+CACHE KEY INTEGRITY
+  SHA-256 over sorted (path, content) pairs. An attacker controlling file
+  content cannot produce a chosen hash without a SHA-256 pre-image attack.
+  No meaningful collision risk.
+
+DEPENDENCY AUDIT
+  Production deps: commander, execa, fast-glob, jiti, picocolors, string-argv,
+  ts-morph, zod. Run `pnpm audit` before each release; resolve any high/
+  critical findings before shipping.
+
+BENCHMARK (startup)
 PROMPT: Measure-Command { node dist/index.js --help } PowerShell
 
 # Before phase-8 fixes (tsup/tsx/@types/node in dependencies, stale dist):

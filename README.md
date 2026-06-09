@@ -92,6 +92,23 @@ export default defineConfig({
 
 ---
 
+## Performance
+
+Measured on a real Next.js 16 / Turbopack app (32 routes, TypeScript, Windows i9):
+
+| Scenario | Time |
+|----------|------|
+| Cold run — no cache, full Next.js build | ~41–49 s |
+| Warm run — inputs unchanged, task skipped | 0 ms |
+
+The warm run is not "fast" — it is **zero**. Antiscaler hashes inputs, finds a match, and exits without spawning the build process at all. The only overhead on a cache hit is the hash computation and a single `cache.json` read, which is sub-millisecond.
+
+CLI startup overhead (e.g. `antiscaler --help`) is consistently under 200 ms regardless of project size.
+
+> Cold-run time reflects your build tool, not Antiscaler. Run `antiscaler insight` after a few builds to see per-task timings for your own project.
+
+---
+
 ## CLI reference
 
 ```

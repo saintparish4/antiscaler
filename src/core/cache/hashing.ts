@@ -11,7 +11,14 @@ export interface HashOptions {
 }
 
 function assertSafePattern(pattern: string): void {
-	if (path.isAbsolute(pattern) || pattern.startsWith("..")) {
+	if (path.isAbsolute(pattern)) {
+		throw new Error(
+			`Unsafe glob pattern "${pattern}": patterns must be relative and must not traverse outside the project root.`,
+		);
+	}
+	// Normalize separators then reject any ".." segment — catches "./../../etc/passwd" and similar.
+	const segments = pattern.replace(/\\/g, "/").split("/");
+	if (segments.some((seg) => seg === "..")) {
 		throw new Error(
 			`Unsafe glob pattern "${pattern}": patterns must be relative and must not traverse outside the project root.`,
 		);
