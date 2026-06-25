@@ -6,19 +6,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pnpm build          # compile to dist/ via tsup
+pnpm clean          # delete dist/
 pnpm test           # vitest in watch mode
 pnpm test:run       # vitest single-run (unit only)
 pnpm test:integration  # integration tests only
 pnpm test:all       # run all tests + coverage
-pnpm lint           # biome check + tsc --noEmit
+pnpm check          # biome check --write (format + lint + organize imports)
+pnpm lint           # biome check (read-only) + tsc --noEmit — used in CI
 pnpm format         # biome format --write .
+pnpm format:check   # biome format (read-only)
 pnpm typecheck      # tsc --noEmit
 
 # Run a single test file
 pnpm vitest run src/core/graph/__tests__/dag.test.ts
+
+# Test the built CLI
+node dist/cli.js --help
 ```
 
-Node ≥ 20 required; `pnpm` is the package manager.
+Node ≥ 20, pnpm ≥ 10 required.
 
 ## Architecture
 
@@ -83,6 +89,32 @@ Webpack (`next-plugin.ts`) and Vite (`vite-plugin.ts`) plugins that intercept mo
 
 **Errors**
 - Throw typed errors from `src/core/errors.ts` (`AntiscaleError`, `ConfigError`, `CycleError`). The CLI top-level catches `AntiscaleError` and exits with code 1; unexpected errors exit with code 2.
+
+## Key design decisions
+
+- **Lazy CLI imports**: `src/cli/index.ts` registers commands with dynamic `import()` in `action()` callbacks. This keeps `antiscaler --help` under 200 ms by deferring heavy deps (execa, jiti, fast-glob) until a command actually runs.
+- **DI in runner**: `runTasksWithDeps` accepts a `TaskExecutor` parameter (defaults to the real `executeTask`). Tests inject a mock — never shell out in unit tests.
+- **Typed errors**: Every failure throws an `AntiscaleError` subclass with a machine-readable `.code` string. The CLI top-level catches `AntiscaleError` → exit 1; unexpected errors → exit 2.
+
+## Commit messages
+
+Follow conventional commits: `<type>: <subject>` (imperative mood, ≤ 72 chars, no trailing period).
+
+| Type | Purpose |
+|------|---------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `perf` | Performance improvement |
+| `refactor` | Code refactoring |
+| `test` | Test additions/changes |
+| `docs` | Documentation |
+| `chore` | Build/tooling changes |
+| `types` | Type definition updates |
+| `ci` | CI/CD changes |
+
+## PR requirements
+
+All PRs must pass `pnpm lint` and `pnpm build` before review. `pnpm lint` runs `biome check` (which covers both linting and formatting) plus `tsc --noEmit` — running `pnpm format:check` separately is redundant. Run `pnpm format` locally to fix formatting before pushing. The default branch is `alpha`.
 
 ## Config file note
 

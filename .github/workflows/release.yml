@@ -1,4 +1,4 @@
-# release-please watches every push to master, reads conventional commits,
+# release-please watches every push to alpha, reads conventional commits,
 # and maintains a "Release PR" that bumps package.json + CHANGELOG.md.
 # Merging that PR creates the GitHub Release and triggers the publish job.
 #
@@ -13,7 +13,7 @@ name: Release
 
 on:
   push:
-    branches: [master]
+    branches: [alpha]
 
 permissions:
   contents: write       # create releases, push manifest updates

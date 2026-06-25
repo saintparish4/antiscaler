@@ -155,7 +155,16 @@ Global options:
 
 ## Contributing
 
-All PRs must pass `pnpm lint` (Biome check + type check) and `pnpm build` before review. See the commit history for style guidance.
+```bash
+pnpm check          # format + lint + organize imports (writes in place) — use locally
+pnpm lint           # format + lint + typecheck, no writes — mirrors CI
+pnpm build          # compile to dist/
+pnpm test:run       # unit tests (no build required)
+pnpm test:integration  # integration tests (requires dist/ — run pnpm build first)
+pnpm test:all       # all tests + coverage
+```
+
+All PRs must pass `pnpm lint` and `pnpm build` before review. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow.
 
 ---
 

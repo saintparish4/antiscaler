@@ -7,26 +7,35 @@ git clone <repo-url>
 cd antiscaler
 pnpm install
 
-# Run tests
-pnpm test:run
+# Format, lint, and organize imports (writes in place) — use this locally
+pnpm check
 
-# Type check
-pnpm typecheck
-
-# Format all files (writes in place)
+# Format only (writes in place)
 pnpm format
 
 # Check formatting without writing
 pnpm format:check
 
-# Lint (Biome check + type check)
+# Lint and typecheck without writes — same as CI
 pnpm lint
 
-# Build all entry points
+# Type check only
+pnpm typecheck
+
+# Build all entry points — required before running integration tests
 pnpm build
 
-# Run the built CLI
+# Smoke test the built CLI
 node dist/cli.js --help
+
+# Run unit tests (no build required)
+pnpm test:run
+
+# Run integration tests (requires dist/ — run pnpm build first)
+pnpm test:integration
+
+# Run all tests + coverage
+pnpm test:all
 ```
 
 ## Architecture Overview
@@ -137,6 +146,9 @@ Tests use Vitest. Files live next to the code they test inside `__tests__/`
 directories.
 
 ```bash
+# Build first — integration tests require dist/cli.js
+pnpm build
+
 # Run all tests once
 pnpm test:run
 
@@ -196,4 +208,4 @@ All commits must follow the conventional commit format:
 
 ## PR Requirements
 
-All PRs must pass `pnpm format:check`, `pnpm lint` (Biome check + type check), and `pnpm build` before review. Run `pnpm format` locally to fix formatting before pushing.
+All PRs must pass `pnpm lint` (Biome check + type check) and `pnpm build` before review. `pnpm lint` already covers formatting via `biome check`. Run `pnpm format` locally to fix formatting before pushing.
