@@ -42,19 +42,31 @@ export async function registerDiffAction(
 
 	const classLabel: Record<string, string> = {
 		"non-impacting": "non-impacting  (safe to skip build)",
-		internal: "internal       (non-exported change)",
+		internal: "internal       (implementation-only change)",
 		breaking: "breaking       (exported API changed)",
 	};
 
 	console.log(`\nFile:           ${result.filePath}`);
 	console.log(`Base ref:       ${baseRef}`);
 	console.log(`Classification: ${classLabel[result.classification]}`);
+	console.log(`Confidence:     ${Math.round(result.confidence * 100)}%`);
 
 	const { added, removed, changed } = result.exportedSymbols;
 	if (added.length > 0 || removed.length > 0 || changed.length > 0) {
 		console.log("\nExported symbol changes:");
 		if (added.length > 0) console.log(`  added:   ${added.join(", ")}`);
 		if (removed.length > 0) console.log(`  removed: ${removed.join(", ")}`);
-		if (changed.length > 0) console.log(`  changed: ${changed.join(", ")}`);
+		if (changed.length > 0) {
+			console.log(
+				`  changed: ${changed.map((c) => `${c.name} [${c.kind}]`).join(", ")}`,
+			);
+		}
+	}
+
+	if (result.confidenceNotes.length > 0) {
+		console.log("\nConfidence lowered by:");
+		for (const note of result.confidenceNotes) {
+			console.log(`  - ${note}`);
+		}
 	}
 }
