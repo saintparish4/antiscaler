@@ -86,6 +86,8 @@ export default defineConfig({
 | **Remote cache** | Shares the cache across machines via HTTP or S3 — CI ↔ local, run A ↔ run B |
 | **Lint-only fast path** | Skips builds entirely when no critical route is touched (Next.js / Vite with tracer) |
 | **PR commands** | `pr check` classifies changed TypeScript semantically; `pr replay` intersects changes with recorded traces |
+| **Impact prediction** | `impact` classifies each change at the symbol level (signature vs. body vs. comment-only), traces the blast radius through a file-level import graph, and predicts which test files must run — report-only, with a confidence score |
+| **Workspace dependency check** | `workspace check` fails CI when a package imports a workspace sibling or external package it doesn't declare, or reaches into a sibling via a relative path |
 | **Event-driven scheduler** | Starts tasks the moment their dependencies finish instead of waiting for full DAG waves |
 | **Auto-detection** | Detects your package manager, runtime, and framework from lockfiles and project files |
 | **Doctor** | `antiscaler doctor` validates your config, checks Node version, and warns about cache size |
@@ -126,6 +128,8 @@ Commands:
   check                      Validate config and DAG without executing
   doctor                     Health-check your environment and config
   diff <file> [--base <ref>] Classify a single file change as non-impacting/internal/breaking
+  impact [--base <ref>]      Predict which tests a change requires (report-only; --json for CI)
+  workspace check [--json]   Detect undeclared dependencies — exits 1 on violations (CI gate)
   pr check [--base <ref>]    Classify changed TypeScript files semantically
   pr replay [--base <ref>]   Intersect PR changes with the last trace session
   pr report [--base <ref>]   Combined JSON/Markdown report of check + replay

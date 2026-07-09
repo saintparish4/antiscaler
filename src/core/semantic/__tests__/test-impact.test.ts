@@ -1,0 +1,270 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { buildImportGraph } from "../../graph/import-graph.js";
+import type { FileImpact } from "../blast-radius.js";
+import type { ImportEntry, SymbolGraph } from "../symbol-graph.js";
+import {
+	buildCoverageMap,
+	buildTestTrace,
+	computeTestImpact,
+	defaultIsTestFile,
+	traceTestImpact,
+} from "../test-impact.js";
+
+function makeSymbolGraph(files: Record<string, ImportEntry[]>): SymbolGraph {
+	const out: SymbolGraph["files"] = {};
+	for (const [file, imports] of Object.entries(files)) {
+		out[file] = { contentHash: "", symbols: [], imports, notes: [] };
+	}
+	return { version: 1, generatedAt: "", files: out };
+}
+
+function namedImport(module: string, names: string[]): ImportEntry {
+	return { module, kind: "static", typeOnly: false, names };
+}
+
+function unanalyzed(filePath: string): FileImpact {
+	return {
+		filePath,
+		classification: "unanalyzed",
+		impactedSymbols: [],
+		propagates: false,
+		notes: [],
+	};
+}
+
+const GRAPH = buildImportGraph(
+	makeSymbolGraph({
+		"src/auth.ts": [],
+		"src/app.ts": [namedImport("./auth.js", ["login"])],
+		"src/other.ts": [],
+		"src/__tests__/auth.test.ts": [namedImport("../auth.js", ["login"])],
+		"src/__tests__/app.test.ts": [namedImport("../app.js", ["boot"])],
+		"src/__tests__/other.test.ts": [namedImport("../other.js", ["other"])],
+	}),
+);
+
+describe("defaultIsTestFile", () => {
+	it("matches __tests__ dirs and .test/.spec suffixes", () => {
+		expect(defaultIsTestFile("src/__tests__/x.ts")).toBe(true);
+		expect(defaultIsTestFile("src/x.test.ts")).toBe(true);
+		expect(defaultIsTestFile("src/x.spec.tsx")).toBe(true);
+		expect(defaultIsTestFile("src/x.ts")).toBe(false);
+		expect(defaultIsTestFile("src/latest.ts")).toBe(false);
+	});
+});
+
+describe("buildTestTrace / buildCoverageMap", () => {
+	it("closures include the test itself and its transitive imports", () => {
+		const trace = buildTestTrace(GRAPH);
+		expect([...trace.closures.keys()].sort()).toEqual([
+			"src/__tests__/app.test.ts",
+			"src/__tests__/auth.test.ts",
+			"src/__tests__/other.test.ts",
+		]);
+		expect(
+			[...(trace.closures.get("src/__tests__/app.test.ts") ?? [])].sort(),
+		).toEqual(["src/__tests__/app.test.ts", "src/app.ts", "src/auth.ts"]);
+	});
+
+	it("coverage map inverts closures", () => {
+		const coverage = buildCoverageMap(buildTestTrace(GRAPH));
+		expect([...(coverage.testsFor.get("src/auth.ts") ?? [])].sort()).toEqual([
+			"src/__tests__/app.test.ts",
+			"src/__tests__/auth.test.ts",
+		]);
+		expect([...(coverage.testsFor.get("src/other.ts") ?? [])].sort()).toEqual([
+			"src/__tests__/other.test.ts",
+		]);
+	});
+});
+
+describe("computeTestImpact", () => {
+	it("selects tests whose closure intersects the affected set", () => {
+		const impact = computeTestImpact(
+			{ changed: [], affectedFiles: ["src/auth.ts"], confidence: 1 },
+			GRAPH,
+		);
+		expect(impact.affectedTests).toEqual([
+			"src/__tests__/app.test.ts",
+			"src/__tests__/auth.test.ts",
+		]);
+		expect(impact.totalTests).toBe(3);
+		expect(impact.selectAll).toBe(false);
+		expect(impact.confidence).toBe(1);
+	});
+
+	it("a changed test file selects itself", () => {
+		const impact = computeTestImpact(
+			{
+				changed: [],
+				affectedFiles: ["src/__tests__/other.test.ts"],
+				confidence: 1,
+			},
+			GRAPH,
+		);
+		expect(impact.affectedTests).toEqual(["src/__tests__/other.test.ts"]);
+	});
+
+	it("an empty affected set selects no tests", () => {
+		const impact = computeTestImpact(
+			{ changed: [], affectedFiles: [], confidence: 1 },
+			GRAPH,
+		);
+		expect(impact.affectedTests).toEqual([]);
+	});
+
+	it("configuration changes trigger select-all", () => {
+		const impact = computeTestImpact(
+			{
+				changed: [unanalyzed("package.json")],
+				affectedFiles: ["package.json"],
+				confidence: 0.9,
+			},
+			GRAPH,
+		);
+		expect(impact.selectAll).toBe(true);
+		expect(impact.affectedTests).toHaveLength(3);
+		expect(impact.notes.some((n) => n.includes("running all tests"))).toBe(
+			true,
+		);
+	});
+
+	it("vitest config changes also trigger select-all", () => {
+		const impact = computeTestImpact(
+			{
+				changed: [unanalyzed("vitest.config.mts")],
+				affectedFiles: ["vitest.config.mts"],
+				confidence: 1,
+			},
+			GRAPH,
+		);
+		expect(impact.selectAll).toBe(true);
+	});
+
+	it("non-config unanalyzed changes do not select-all", () => {
+		const impact = computeTestImpact(
+			{
+				changed: [unanalyzed("docs/README.md")],
+				affectedFiles: ["docs/README.md"],
+				confidence: 0.9,
+			},
+			GRAPH,
+		);
+		expect(impact.selectAll).toBe(false);
+		expect(impact.affectedTests).toEqual([]);
+	});
+
+	it("unresolved imports in a selected closure lower confidence with one note", () => {
+		const graph = buildImportGraph(
+			makeSymbolGraph({
+				"src/auth.ts": [namedImport("./fixture.json", [])],
+				"src/__tests__/auth.test.ts": [namedImport("../auth.js", ["login"])],
+			}),
+		);
+		const impact = computeTestImpact(
+			{ changed: [], affectedFiles: ["src/auth.ts"], confidence: 1 },
+			graph,
+		);
+		expect(impact.affectedTests).toEqual(["src/__tests__/auth.test.ts"]);
+		expect(impact.notes).toEqual([
+			"1 selected test file(s) have unresolved imports in their closure — fixtures or assets may be missed",
+		]);
+		expect(impact.confidence).toBe(0.9);
+	});
+
+	it("honors a custom isTestFile predicate", () => {
+		const graph = buildImportGraph(
+			makeSymbolGraph({
+				"src/a.ts": [],
+				"checks/a.check.ts": [namedImport("../src/a.js", ["a"])],
+			}),
+		);
+		const impact = computeTestImpact(
+			{ changed: [], affectedFiles: ["src/a.ts"], confidence: 1 },
+			graph,
+			{ isTestFile: (f) => f.endsWith(".check.ts") },
+		);
+		expect(impact.affectedTests).toEqual(["checks/a.check.ts"]);
+		expect(impact.totalTests).toBe(1);
+	});
+});
+
+describe("traceTestImpact", () => {
+	const tmpDirs: string[] = [];
+	function makeTmpDir(): string {
+		const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-testimpact-"));
+		tmpDirs.push(dir);
+		return dir;
+	}
+	afterEach(() => {
+		for (const d of tmpDirs) {
+			try {
+				rmSync(d, { recursive: true, force: true });
+			} catch {
+				// Windows holds directory handles briefly; the OS cleans these up eventually.
+			}
+		}
+		tmpDirs.length = 0;
+	});
+
+	function writeFixture(dir: string, files: Record<string, string>): void {
+		for (const [rel, content] of Object.entries(files)) {
+			const abs = path.join(dir, rel);
+			mkdirSync(path.dirname(abs), { recursive: true });
+			writeFileSync(abs, content);
+		}
+	}
+
+	const AUTH_BEFORE =
+		"export function login(name: string): string { return name; }";
+	const FIXTURE = {
+		"src/app.ts":
+			'import { login } from "./auth.js";\nexport const boot = (): string => login("a");',
+		"src/app.test.ts":
+			'import { boot } from "./app.js";\nexport const t = boot();',
+		"src/unrelated.test.ts": "export const u = 1;",
+	};
+
+	it("a comment-only change selects zero tests", async () => {
+		const dir = makeTmpDir();
+		writeFixture(dir, {
+			...FIXTURE,
+			"src/auth.ts": `${AUTH_BEFORE}\n// clarifying comment`,
+		});
+
+		const result = await traceTestImpact(dir, {
+			changedFiles: ["src/auth.ts"],
+			readBefore: async () => AUTH_BEFORE,
+		});
+
+		expect(result?.radius.changed[0]?.classification).toBe("non-impacting");
+		expect(result?.tests.affectedTests).toEqual([]);
+		expect(result?.tests.totalTests).toBe(2);
+	});
+
+	it("a body-only change still selects the tests of transitive importers", async () => {
+		const dir = makeTmpDir();
+		writeFixture(dir, {
+			...FIXTURE,
+			"src/auth.ts":
+				"export function login(name: string): string { return name.trim(); }",
+		});
+
+		const result = await traceTestImpact(dir, {
+			changedFiles: ["src/auth.ts"],
+			readBefore: async () => AUTH_BEFORE,
+		});
+
+		expect(result?.radius.changed[0]?.classification).toBe("internal");
+		expect(result?.tests.affectedTests).toEqual(["src/app.test.ts"]);
+	});
+
+	it("returns null when git is unavailable and no changed files are given", async () => {
+		const dir = makeTmpDir();
+		writeFixture(dir, { "src/a.ts": "export const a = 1;" });
+		expect(await traceTestImpact(dir)).toBeNull();
+	});
+});

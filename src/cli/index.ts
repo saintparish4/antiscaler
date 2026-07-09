@@ -156,6 +156,40 @@ program
 		await registerDiffAction(file, { base: opts.base });
 	});
 
+program
+	.command("impact")
+	.description(
+		"Predict which tests a change requires — report-only; the full suite should still run",
+	)
+	.option("--base <ref>", "git ref to compare against", "HEAD~1")
+	.option("--json", "output the report as JSON")
+	.action(async (opts: { base: string; json?: boolean }) => {
+		const { registerImpactAction } = await import("./commands/impact.js");
+		await registerImpactAction({
+			base: opts.base,
+			...(opts.json === true && { json: true }),
+		});
+	});
+
+const workspaceCmd = program
+	.command("workspace")
+	.description("Workspace-level analysis commands");
+
+workspaceCmd
+	.command("check")
+	.description(
+		"Detect packages importing dependencies they do not declare (CI gate: exits 1 on violations)",
+	)
+	.option("--json", "output the result as JSON")
+	.action(async (opts: { json?: boolean }) => {
+		const { registerWorkspaceCheckAction } = await import(
+			"./commands/workspace.js"
+		);
+		await registerWorkspaceCheckAction({
+			...(opts.json === true && { json: true }),
+		});
+	});
+
 const prCmd = program.command("pr").description("PR-aware analysis commands");
 
 prCmd

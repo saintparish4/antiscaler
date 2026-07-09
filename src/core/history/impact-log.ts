@@ -1,0 +1,92 @@
+/**
+ * @module
+ * Shadow-mode prediction log (seed of roadmap 2.2 build history). Every
+ * `antiscaler impact` run appends its prediction to
+ * `.antiscale/history/impact.jsonl` so prediction-vs-reality can be measured
+ * before test skipping is ever enabled — the measured false-skip rate, not an
+ * asserted number, is what earns the right to skip (roadmap 1.5 hard gate).
+ *
+ * Logging is best-effort by design: a history write failure must never fail
+ * the command, so these functions return booleans / empty lists instead of
+ * throwing.
+ */
+
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+export interface ImpactPrediction {
+	/** ISO timestamp of the prediction. */
+	at: string;
+	baseRef: string;
+	changedFiles: string[];
+	affectedFiles: number;
+	affectedPackages: string[];
+	/** The predicted run set — reality reconciliation diffs failures against it. */
+	affectedTests: string[];
+	totalTests: number;
+	selectAll: boolean;
+	verdict: string;
+	confidence: number;
+	notes: string[];
+}
+
+export const MAX_IMPACT_RECORDS = 1000;
+
+const LOG_FILENAME = "impact.jsonl";
+
+export function defaultHistoryDir(cwd: string): string {
+	return path.join(cwd, ".antiscale", "history");
+}
+
+/**
+ * Append one prediction, keeping only the newest MAX_IMPACT_RECORDS entries.
+ * Returns false (never throws) when the write fails.
+ */
+export async function appendImpactPrediction(
+	historyDir: string,
+	prediction: ImpactPrediction,
+): Promise<boolean> {
+	try {
+		await mkdir(historyDir, { recursive: true });
+		const file = path.join(historyDir, LOG_FILENAME);
+		let lines: string[] = [];
+		try {
+			lines = (await readFile(file, "utf8"))
+				.split("\n")
+				.filter((l) => l.trim() !== "");
+		} catch {
+			// First write — no log yet.
+		}
+		lines.push(JSON.stringify(prediction));
+		if (lines.length > MAX_IMPACT_RECORDS) {
+			lines = lines.slice(-MAX_IMPACT_RECORDS);
+		}
+		await writeFile(file, `${lines.join("\n")}\n`);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** Read the log oldest-first, skipping corrupt lines. [] when missing. */
+export async function readImpactPredictions(
+	historyDir: string,
+): Promise<ImpactPrediction[]> {
+	let raw: string;
+	try {
+		raw = await readFile(path.join(historyDir, LOG_FILENAME), "utf8");
+	} catch {
+		return [];
+	}
+	const out: ImpactPrediction[] = [];
+	for (const line of raw.split("\n")) {
+		const trimmed = line.trim();
+		if (trimmed === "") continue;
+		try {
+			out.push(JSON.parse(trimmed) as ImpactPrediction);
+		} catch {
+			// Corrupt line (interrupted write) — skip rather than fail.
+		}
+	}
+	return out;
+}

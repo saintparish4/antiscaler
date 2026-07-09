@@ -44,7 +44,7 @@ The central request path for every CLI command is:
 
 2. **`core/config/`** — `loader.ts` uses jiti to load `antiscale.config.ts` without a build step; `schema.ts` holds the Zod schema with all defaults. The schema drives both validation and the `AntiscaleConfig`/`ResolvedAntiscaleConfig` types in `src/types/index.ts`.
 
-3. **`core/graph/`** — `dag.ts` is the `TaskGraph` class (Kahn's algorithm for topological levels, cycle detection). `package-graph.ts` discovers workspace packages and auto-generates cross-package task entries. `planner.ts` wires config into a `TaskGraph`.
+3. **`core/graph/`** — `dag.ts` is the `TaskGraph` class (Kahn's algorithm for topological levels, cycle detection). `package-graph.ts` discovers workspace packages and auto-generates cross-package task entries. `planner.ts` wires config into a `TaskGraph`. `import-graph.ts` is the file-level reverse import graph (`Map<file, dependents[]>` plus `computeAffectedFiles` BFS), derived on demand from the persisted SymbolGraph — not persisted itself, since derivation is cheap string work. `workspace-check.ts` compares actual imports against declared manifest dependencies (surfaced as `antiscaler workspace check`, a CI gate that exits 1 on violations).
 
 4. **`core/execution/`** — `runner.ts:runTasksWithDeps()` is the main execution loop: resolves DAG levels → `mapLimit` for concurrency within each level (or the event-driven `scheduler.ts` path when `useScheduler` is true) → calls `runOneTask` per task. `executor.ts` shells out via execa.
 
@@ -54,7 +54,7 @@ The central request path for every CLI command is:
 
 7. **`core/scope/`** — `trace-loader.ts` reads recorded trace sessions; `critical-path.ts` checks whether changed files intersect declared critical routes, driving the `lintOnly` optimization.
 
-8. **`core/semantic/`** — AST-based diff classifier using ts-morph (`non-impacting` / `internal` / `breaking`). Exists in core but not yet fully wired to CLI commands.
+8. **`core/semantic/`** — ts-morph–based change intelligence. `surface.ts` extracts each file's exported surface (signature vs. body per symbol); `differ.ts` classifies changes (`non-impacting` / `internal` / `breaking`) with per-symbol `changeKind` and a confidence score; `symbol-graph.ts` is the persisted, incrementally-updated symbol index (`.antiscale/graph/symbols.json`) recording imports, exports, and signature/body hashes per file; `blast-radius.ts` traces `File → Import → Package → Task` — differ-gated seeds, symbol-gated first hop, structural BFS beyond it, with an aggregate confidence score; `test-impact.ts` builds `TestTrace` (test → import closure) / `CoverageMap` (source → tests) and selects affected tests — behavior-conservative (body-only edits still select importers' tests; only `non-impacting` changes select zero) with select-all on config changes. The differ is wired into `diff` and `pr check`; the full pipeline is surfaced by `antiscaler impact` (`cli/commands/impact.ts`) — report-only, reusing the `pr check` verdict vocabulary, logging every prediction to `.antiscale/history/impact.jsonl` (`core/history/impact-log.ts`) for shadow-mode validation before test skipping is ever enabled.
 
 ### Adapters (`src/adapters/`)
 

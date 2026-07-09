@@ -47,6 +47,13 @@ export class CacheError extends AntiscaleError {
 	}
 }
 
+export class GraphError extends AntiscaleError {
+	constructor(message: string, options?: ErrorOptions) {
+		super("GRAPH_ERROR", message, options);
+		this.hint = "Delete `.antiscale/graph/` and retry.";
+	}
+}
+
 export class CliUsageError extends AntiscaleError {
 	constructor(message: string) {
 		super("CLI_USAGE", message);
