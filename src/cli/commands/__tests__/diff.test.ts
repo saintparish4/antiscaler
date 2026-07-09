@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -77,6 +78,59 @@ describe("registerDiffAction", () => {
 			const out = log.mock.calls.map((c) => String(c[0])).join("\n");
 			// The base ref should appear in the output header
 			expect(out).toContain("main");
+		} finally {
+			process.cwd = origCwd;
+		}
+	});
+
+	// Regression test for a Windows-only bug: `path.relative` returns
+	// backslash-separated paths, which `git show <ref>:<path>` rejects as a
+	// pathspec (git always expects POSIX separators internally, regardless of
+	// host OS). The failure was swallowed by the `before = ""` fallback, so a
+	// body-only edit to a *nested* file misclassified as "breaking" (every
+	// export looked "added") instead of "internal" — but only on a real git
+	// repo with a file more than one directory deep, which the fixture-only
+	// tests above never exercise (git always fails outright there).
+	it("classifies a body-only edit to a nested file as internal (real git repo)", async () => {
+		const dir = makeTmpDir();
+		const nestedDir = path.join(dir, "packages", "ui", "src");
+		mkdirSync(nestedDir, { recursive: true });
+		const nestedFile = path.join(nestedDir, "index.ts");
+		const nestedRelPath = path.join("packages", "ui", "src", "index.ts");
+
+		writeFileSync(
+			nestedFile,
+			"export function formatPrice(cents: number): string {\n" +
+				"  return `$${(cents / 100).toFixed(2)}`;\n" +
+				"}\n",
+		);
+
+		const GIT = ["-c", "user.email=t@t.com", "-c", "user.name=T"].join(" ");
+		const run = (cmd: string) => execSync(cmd, { cwd: dir, stdio: "ignore" });
+		run("git init");
+		run("git add .");
+		run(`git ${GIT} commit -m initial`);
+
+		// Body-only edit: same signature, different implementation.
+		writeFileSync(
+			nestedFile,
+			"export function formatPrice(cents: number): string {\n" +
+				"  const dollars = cents / 100;\n" +
+				"  return `$${dollars.toFixed(2)}`;\n" +
+				"}\n",
+		);
+
+		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		const origCwd = process.cwd;
+		process.cwd = () => dir;
+		try {
+			const { registerDiffAction } = await import("../diff.js");
+			await registerDiffAction(nestedRelPath, { base: "HEAD" });
+			const out = log.mock.calls.map((c) => String(c[0])).join("\n");
+			expect(out).toContain("internal");
+			expect(out).not.toContain("breaking");
+			// Displayed path is normalized to POSIX regardless of host separator.
+			expect(out).toContain("packages/ui/src/index.ts");
 		} finally {
 			process.cwd = origCwd;
 		}

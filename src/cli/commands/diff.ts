@@ -16,7 +16,11 @@ export async function registerDiffAction(
 	const cwd = process.cwd();
 	const baseRef = opts.base ?? "HEAD~1";
 	const absPath = path.resolve(cwd, filePath);
-	const relPath = path.relative(cwd, absPath);
+	// git pathspecs are always POSIX-separated internally, regardless of host
+	// OS — `path.relative` returns backslashes on Windows, which `git show`
+	// silently fails to resolve (falls into the catch below), making every
+	// file look "new" and every export look "added" (a false `breaking`).
+	const relPath = path.relative(cwd, absPath).replace(/\\/g, "/");
 
 	// Retrieve the file as it existed at baseRef.
 	// Falls back to empty string when the file is new (not yet in git history).

@@ -151,6 +151,7 @@ Global options:
 | [Next.js](./docs/nextjs.md) | Tracer plugin, lint-only fast path |
 | [Vite](./docs/vite.md) | Vite plugin setup |
 | [PR commands](./docs/pr-commands.md) | `pr check`, `pr replay`, `pr report`, GitHub Actions |
+| [Impact & workspace check](./docs/impact-and-workspace.md) | `impact` test prediction, `workspace check` CI gate, known limitations |
 | [Remote cache](./docs/remote-cache.md) | HTTP and S3 backend setup |
 | [Config reference](./docs/config-reference.md) | Every config key, type, default, and example |
 | [Troubleshooting](./docs/troubleshooting.md) | Top 10 problems and fixes |

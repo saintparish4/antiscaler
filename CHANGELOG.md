@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`SymbolGraph`** (`.antiscale/graph/symbols.json`) — a persisted, incrementally-updated
+  index of every workspace file's imports and exported symbols (with signature/body
+  hashes). A file is only re-parsed when its content hash changes, so repeat runs stay
+  cheap on large repos.
+- **File-level reverse import graph** (`core/graph/import-graph.ts`) — derives
+  `Map<file, dependents[]>` from the `SymbolGraph` on demand (cheap string work, no
+  filesystem access). The substrate both new commands below are built on.
+- **Blast-radius traversal** (`core/semantic/blast-radius.ts`) — walks
+  `File → Import → Package → Task`, gated by the signature differ: `non-impacting`
+  changes never seed propagation, body-only `internal` changes affect only the file
+  itself, and only `breaking` changes cross the first hop (gated per symbol so a
+  dependent importing only untouched names is skipped). Anything the analysis can't
+  prove (dynamic imports, unresolved specifiers, non-TS files) widens the radius or
+  lowers the confidence score instead of silently passing it by.
+- **Test impact analysis** (`core/semantic/test-impact.ts`) — maps every test file to its
+  static import closure and selects the tests whose closure intersects the blast radius.
+- **`antiscaler impact`** — predicts which tests a given change requires by running the
+  differ → blast-radius → test-impact pipeline end to end.
+  - **This command is report-only.** It does not skip any tests today, and test
+    skipping is intentionally not implemented yet — the CLI prints the run/skip
+    breakdown for information, but you should still run your full suite.
+  - The printed **confidence score is a graph-resolution metric**, not a validated
+    safety number: it reflects how much of the change was structurally resolved versus
+    left as a dynamic-import or unresolved-specifier edge. It is not (yet) backed by any
+    measurement of actual prediction accuracy.
+  - Every run appends its prediction to `.antiscale/history/impact.jsonl`. This is
+    shadow-mode logging: the measured false-skip rate over that accumulated history —
+    not the confidence score above — is what will eventually earn the right to enable
+    real test skipping.
+- **`antiscaler workspace check`** — CI gate that compares each workspace package's
+  actual imports (from the `SymbolGraph`) against its declared manifest dependencies.
+  Flags undeclared workspace/external dependencies and relative imports that reach
+  across a package boundary; exits 1 on any violation.
+- **Documentation**: `docs/impact-and-workspace.md` — usage and output for both commands
+  above, plus their shared limitations (unresolved `tsconfig` path aliases, best-effort
+  `exports`-field resolution, static import closures missing fixtures/snapshots/non-TS
+  assets).
+
+### Fixed
+
+- **`antiscaler diff <file>`** misclassified changes to files more than one directory
+  deep as `breaking` on Windows. `path.relative` returns backslash-separated paths,
+  which `git show <ref>:<path>` rejects as a pathspec (git pathspecs are always
+  POSIX-separated internally); the failure was silently swallowed by the existing
+  "new file" fallback, so every export looked "added". Found by literally executing
+  the v1.1 milestone gate against a real pnpm/Next.js monorepo on Windows rather than
+  relying on in-memory fixtures — `impact` and `pr check` were unaffected since their
+  file lists come from `git diff --name-only`, which git already emits POSIX-normalized.
+
+### Changed
+
+- **`core/semantic/differ.ts`** now compares each exported symbol's signature/type shape
+  independently of its implementation body (a per-symbol `changeKind`:
+  `signature` / `body` / `type`) instead of diffing the full declaration text. A
+  body-only edit to an exported function now classifies as `internal` instead of
+  `breaking` — this changes the classification (and therefore the verdict) that
+  `diff <file>` and `pr check` report for that kind of change.
+
 ## [1.0.0] - 2026-06-09
 
 First stable release. The public API surface — everything exported from
