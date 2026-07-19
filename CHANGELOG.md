@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-19
+
+### Added
+
+- **CLI visuals layer** (`src/cli/visuals/`) — global `-q`/`-v`/`--no-progress`/`--color`/
+  `--no-color` flags, ported from uv's color/printer/progress/prompts design
+  (`CLI_VISUALS.md`), built dependency-free on the existing `picocolors`.
+  - `Printer` gates stdout/stderr and decides whether animated progress may draw
+    (default mode, TTY only — hidden in verbose mode, quiet/silent, and non-TTY output).
+  - `ProgressReporter` drives a root spinner with pinned task headers, repainted in a
+    single write per frame wrapped in a synchronized-update escape sequence so
+    supporting terminals paint each frame atomically instead of flickering.
+  - `build`/`dev`/`run` now render live task progress through `ProgressReporter` instead
+    of plain per-line logging; task stdout/stderr is captured and streamed as prefixed
+    lines above the live block while progress is animating, so child output can no
+    longer tear through the display (falls back to inherited stdio otherwise).
+  - `confirm`/`password`/`input` prompts, with line-mode fallback off a TTY.
+
 ## [1.1.0] - 2026-07-09
 
 ### Added
