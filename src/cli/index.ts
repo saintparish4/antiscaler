@@ -2,20 +2,65 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { AntiscaleError } from "../core/errors.js";
 import type { ConcurrencyOpts } from "./parse-opts.js";
 import { parseConcurrency } from "./parse-opts.js";
+import {
+	getColors,
+	resolveColorChoice,
+	writeGlobalColorChoice,
+} from "./visuals/color.js";
+import { Printer, setGlobalPrinter } from "./visuals/printer.js";
 
 const _dir = dirname(fileURLToPath(import.meta.url));
 const _pkg = JSON.parse(
 	readFileSync(join(_dir, "..", "package.json"), "utf8"),
 ) as { version: string };
 
+/** Global output flags, resolved once in the preAction hook below. */
+type GlobalVisualOptions = {
+	quiet: number;
+	verbose: number;
+	/** Commander negated option: `--no-progress` sets this to false. */
+	progress: boolean;
+	/** `--color <when>`, or false when `--no-color` is passed. */
+	color?: string | boolean;
+};
+
+const countFlag = (_value: string, previous: number) => previous + 1;
+
 const program = new Command()
 	.name("antiscaler")
 	.description("Adaptive dev orchestration CLI")
-	.version(_pkg.version);
+	.version(_pkg.version)
+	.option(
+		"-q, --quiet",
+		"use quiet output (repeat, e.g. -qq, for silent)",
+		countFlag,
+		0,
+	)
+	.option("-v, --verbose", "use verbose output", countFlag, 0)
+	.option("--no-progress", "hide progress bars and spinners")
+	.addOption(
+		new Option("--color <when>", "control colored output").choices([
+			"auto",
+			"always",
+			"never",
+		]),
+	)
+	.option("--no-color", "disable colored output (alias for --color never)")
+	.hook("preAction", (thisCommand) => {
+		const opts = thisCommand.opts<GlobalVisualOptions>();
+		writeGlobalColorChoice(resolveColorChoice({ color: opts.color }));
+		setGlobalPrinter(
+			Printer.fromFlags({
+				quiet: opts.quiet,
+				verbose: opts.verbose,
+				noProgress: !opts.progress,
+			}),
+		);
+	});
 
 program
 	.command("build")
@@ -237,9 +282,10 @@ prCmd
 	);
 
 program.parseAsync(process.argv).catch((err: unknown) => {
+	const colors = getColors();
 	if (err instanceof AntiscaleError) {
-		console.error(`[${err.code}] ${err.message}`);
-		if (err.hint) console.error(`  Hint: ${err.hint}`);
+		console.error(`${colors.red(`[${err.code}]`)} ${err.message}`);
+		if (err.hint) console.error(colors.dim(`  Hint: ${err.hint}`));
 		process.exit(1);
 	}
 	console.error("Unexpected error — please file a bug:", err);

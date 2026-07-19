@@ -6,9 +6,21 @@ export type TaskExecutor = (
 	cfg: TaskConfig,
 	pm: string,
 	cwd: string,
+	/**
+	 * When set, the task's stdout/stderr is captured and streamed here line by
+	 * line instead of inheriting the terminal — used by the CLI to keep child
+	 * output from tearing through animated progress rendering.
+	 */
+	onOutput?: (line: string) => void,
 ) => Promise<void>;
 
-export const executeTask: TaskExecutor = async (name, cfg, pm, cwd) => {
+export const executeTask: TaskExecutor = async (
+	name,
+	cfg,
+	pm,
+	cwd,
+	onOutput,
+) => {
 	// Lazy imports keep startup fast (`antiscaler --help` stays < 100ms).
 	const { execa, ExecaError } = await import("execa");
 	const { default: stringArgv } = await import("string-argv");
@@ -21,7 +33,16 @@ export const executeTask: TaskExecutor = async (name, cfg, pm, cwd) => {
 	}
 
 	try {
-		await execa(cmd, args, { cwd, stdio: "inherit" });
+		if (onOutput === undefined) {
+			await execa(cmd, args, { cwd, stdio: "inherit" });
+		} else {
+			const subprocess = execa(cmd, args, { cwd, all: true, buffer: false });
+			// Iteration streams interleaved stdout+stderr lines, waits for the
+			// subprocess to end, and throws the ExecaError on failure.
+			for await (const line of subprocess.iterable({ from: "all" })) {
+				onOutput(line);
+			}
+		}
 	} catch (err: unknown) {
 		if (err instanceof ExecaError) {
 			const exitCode = typeof err.exitCode === "number" ? err.exitCode : 1;

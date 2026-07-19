@@ -90,6 +90,24 @@ Webpack (`next-plugin.ts`) and Vite (`vite-plugin.ts`) plugins that intercept mo
 **Errors**
 - Throw typed errors from `src/core/errors.ts` (`AntiscaleError`, `ConfigError`, `CycleError`). The CLI top-level catches `AntiscaleError` and exits with code 1; unexpected errors exit with code 2.
 
+## Development guidelines
+
+- ALWAYS read `CONTRIBUTING.md` first for the dev-setup and testing workflow.
+- ALWAYS add a test case for changed behavior.
+- PREFER unit tests co-located in `__tests__/` for single-module behavior; reserve `*.integration.test.ts` for CLI/cross-package behavior — this repo skews unit-heavy by design (dozens of unit files vs. a handful of integration files).
+- PREFER Vitest's `toMatchSnapshot`/`toMatchInlineSnapshot` over long substring assertions for multi-line output (CLI reports, generated graphs); none exist yet, so set the pattern from nearby tests if you add the first one.
+- Cross-platform correctness is CI's job (`ubuntu`/`windows`/`macos` × Node 20/22/24 matrix in `.github/workflows/ci.yml`), not a local cross-compile step — prefer `node:path` helpers over manual string splitting so the matrix actually catches regressions.
+- PREFER running a single test file (`pnpm vitest run <path>`) over the full suite while iterating.
+- AVOID non-null assertions (`!`), `any`, and `// biome-ignore` comments — Biome already blocks the first two; a `biome-ignore` needs a reason and should be rare.
+- PREFER optional chaining/nullish coalescing and early returns over deep nesting to handle fallibility.
+- PREFER combining conditions in one `if` over nested `if` statements.
+- NEVER run a blanket `pnpm update` — bump one package at a time so lockfile diffs stay reviewable.
+- NEVER assume `pnpm lint` warnings are pre-existing — `alpha` is expected to be clean; if CI is red, your change introduced it.
+- ALWAYS read and copy the style of similar tests when adding new cases.
+- PREFER top-level imports — the sanctioned exception is the lazy dynamic `import()` inside CLI command `action()` callbacks (see Key design decisions below); don't add new dynamic imports elsewhere.
+- AVOID shortening variable names — use `packageScopes`, not `pkgScopes`.
+- PREFER `{@link TypeName}` references in TSDoc comments.
+
 ## Key design decisions
 
 - **Lazy CLI imports**: `src/cli/index.ts` registers commands with dynamic `import()` in `action()` callbacks. This keeps `antiscaler --help` under 200 ms by deferring heavy deps (execa, jiti, fast-glob) until a command actually runs.

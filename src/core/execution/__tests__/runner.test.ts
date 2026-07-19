@@ -350,12 +350,13 @@ describe("runTasksWithDeps", () => {
 		const buildResult = results.find((r) => r.task === "build");
 		expect(buildResult?.skipped).toBe(true);
 		expect(buildResult?.durationMs).toBe(0);
-		// lint was not filtered out
+		// lint was not filtered out (5th arg is the onOutput sink, unset here)
 		expect(executor).toHaveBeenCalledWith(
 			"lint",
 			expect.anything(),
 			expect.anything(),
 			expect.anything(),
+			undefined,
 		);
 		// build executor was never called
 		expect(executor).not.toHaveBeenCalledWith(
@@ -363,6 +364,7 @@ describe("runTasksWithDeps", () => {
 			expect.anything(),
 			expect.anything(),
 			expect.anything(),
+			undefined,
 		);
 	});
 

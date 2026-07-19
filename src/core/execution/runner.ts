@@ -45,8 +45,19 @@ export interface RunOptions {
 	taskFilter?: (taskName: string) => boolean;
 	/** Optional remote cache backend for cross-machine cache sharing. */
 	remoteCache?: RemoteCacheAdapter;
-	/** Called on each task lifecycle change — use createProgressReporter() for live output. */
+	/**
+	 * Called on each task lifecycle change (running/cached/done/failed) —
+	 * drive live output from these events (the CLI bridges them onto a
+	 * spinner via createTaskEventProgress, or use createProgressReporter()
+	 * for plain per-line output).
+	 */
 	onTaskEvent?: OnTaskEvent;
+	/**
+	 * When set, task stdout/stderr is captured and streamed here line by line
+	 * instead of inheriting the terminal — set it whenever live progress
+	 * rendering is active so child output can't tear through the display.
+	 */
+	onTaskOutput?: (task: string, line: string) => void;
 }
 
 export interface TaskRunResult {
@@ -159,6 +170,11 @@ async function runOneTask(
 	const patterns = taskCfg.inputs ?? [];
 	const isStrict = options.config.strategy === "strict";
 	const plugins = options.plugins;
+	const { onTaskOutput } = options;
+	const onOutput =
+		onTaskOutput !== undefined
+			? (line: string) => onTaskOutput(taskName, line)
+			: undefined;
 
 	if (plugins) {
 		const skip = await plugins.runOnBeforeExecute(taskName);
@@ -228,7 +244,7 @@ async function runOneTask(
 		options.onTaskEvent?.({ task: taskName, status: "running" });
 		const start = Date.now();
 		try {
-			await executor(taskName, taskCfg, options.pm, options.cwd);
+			await executor(taskName, taskCfg, options.pm, options.cwd, onOutput);
 		} catch (err) {
 			options.onTaskEvent?.({ task: taskName, status: "failed" });
 			throw err;
@@ -262,7 +278,7 @@ async function runOneTask(
 	options.onTaskEvent?.({ task: taskName, status: "running" });
 	const start = Date.now();
 	try {
-		await executor(taskName, taskCfg, options.pm, options.cwd);
+		await executor(taskName, taskCfg, options.pm, options.cwd, onOutput);
 	} catch (err) {
 		options.onTaskEvent?.({ task: taskName, status: "failed" });
 		throw err;

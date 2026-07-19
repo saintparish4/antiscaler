@@ -1,3 +1,5 @@
+import type { TaskRunResult } from "../../core/execution/runner.js";
+
 export interface RunActionOptions {
 	concurrency?: number;
 	/** Print the task plan without executing anything. */
@@ -27,14 +29,21 @@ export async function registerRunAction(
 	const { readCache } = await import("../../core/cache/store.js");
 	const { computeInsights } = await import("../../core/insight/analyzer.js");
 	const { printInsights } = await import("../../core/insight/reporter.js");
-	const { createProgressReporter } = await import(
-		"../../core/progress/reporter.js"
-	);
+	const { createTaskEventProgress } = await import("../visuals/task-events.js");
 
 	const runOptions = toRunOptions(ctx, opts);
-	runOptions.onTaskEvent = createProgressReporter();
+	const progress = createTaskEventProgress(`Running ${taskName} tasks...`);
+	runOptions.onTaskEvent = progress.onTaskEvent;
+	if (progress.onTaskOutput !== undefined) {
+		runOptions.onTaskOutput = progress.onTaskOutput;
+	}
 
-	const results = await runTasksWithDeps(taskName, ctx.graph, runOptions);
+	let results: TaskRunResult[];
+	try {
+		results = await runTasksWithDeps(taskName, ctx.graph, runOptions);
+	} finally {
+		progress.finish();
+	}
 	const cache = await readCache(ctx.cacheDir);
 	printInsights(
 		computeInsights(results, cache, ctx.config.cache.costPerMissMs),

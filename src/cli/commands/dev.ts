@@ -23,12 +23,18 @@ export async function registerDevAction(
 	}
 
 	const { runTasksWithDeps } = await import("../../core/execution/runner.js");
-	const { createProgressReporter } = await import(
-		"../../core/progress/reporter.js"
-	);
+	const { createTaskEventProgress } = await import("../visuals/task-events.js");
 
 	const runOptions = toRunOptions(ctx, opts);
-	runOptions.onTaskEvent = createProgressReporter();
+	const progress = createTaskEventProgress("Running dev tasks...");
+	runOptions.onTaskEvent = progress.onTaskEvent;
+	if (progress.onTaskOutput !== undefined) {
+		runOptions.onTaskOutput = progress.onTaskOutput;
+	}
 
-	await runTasksWithDeps("dev", ctx.graph, runOptions);
+	try {
+		await runTasksWithDeps("dev", ctx.graph, runOptions);
+	} finally {
+		progress.finish();
+	}
 }

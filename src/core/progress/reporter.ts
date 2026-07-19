@@ -10,12 +10,26 @@ export interface TaskEvent {
 
 export type OnTaskEvent = (event: TaskEvent) => void;
 
+export interface ProgressReporterOptions {
+	/** Whether to color output; defaults to NO_COLOR/CI-aware detection. */
+	colored?: boolean;
+	/** Line sink (line includes its trailing newline); defaults to stderr. */
+	write?: (line: string) => void;
+}
+
 function useColor(): boolean {
 	return !process.env["NO_COLOR"] && !process.env["CI"];
 }
 
-export function createProgressReporter(): OnTaskEvent {
-	const colored = useColor();
+export function createProgressReporter(
+	options: ProgressReporterOptions = {},
+): OnTaskEvent {
+	const colored = options.colored ?? useColor();
+	const write =
+		options.write ??
+		((line: string) => {
+			process.stderr.write(line);
+		});
 	return ({ task, status, durationMs }) => {
 		let line: string;
 		switch (status) {
@@ -38,6 +52,6 @@ export function createProgressReporter(): OnTaskEvent {
 				line = colored ? pc.red(`  ✗ ${task}`) : `  ✗ ${task}`;
 				break;
 		}
-		process.stderr.write(`${line}\n`);
+		write(`${line}\n`);
 	};
 }

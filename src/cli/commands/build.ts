@@ -1,3 +1,5 @@
+import type { TaskRunResult } from "../../core/execution/runner.js";
+
 export interface BuildActionOptions {
 	concurrency?: number;
 	scope?: string;
@@ -35,12 +37,14 @@ export async function registerBuildAction(
 	const { loadTrace, tracedPackages } = await import(
 		"../../core/scope/trace-loader.js"
 	);
-	const { createProgressReporter } = await import(
-		"../../core/progress/reporter.js"
-	);
+	const { createTaskEventProgress } = await import("../visuals/task-events.js");
 
 	const runOptions = toRunOptions(ctx, opts);
-	runOptions.onTaskEvent = createProgressReporter();
+	const progress = createTaskEventProgress("Running build tasks...");
+	runOptions.onTaskEvent = progress.onTaskEvent;
+	if (progress.onTaskOutput !== undefined) {
+		runOptions.onTaskOutput = progress.onTaskOutput;
+	}
 
 	if (opts.scope) {
 		const trace = await loadTrace(ctx.cwd, opts.scope);
@@ -66,7 +70,12 @@ export async function registerBuildAction(
 			: affectedFilter;
 	}
 
-	const results = await runTasksWithDeps("build", ctx.graph, runOptions);
+	let results: TaskRunResult[];
+	try {
+		results = await runTasksWithDeps("build", ctx.graph, runOptions);
+	} finally {
+		progress.finish();
+	}
 	const cache = await readCache(ctx.cacheDir);
 	printInsights(
 		computeInsights(results, cache, ctx.config.cache.costPerMissMs),

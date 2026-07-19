@@ -147,3 +147,68 @@ describe("executeTask -- error paths", () => {
 		}
 	});
 });
+
+describe("executeTask -- captured output (onOutput)", () => {
+	beforeEach(async () => {
+		const execa = await getMockedExeca();
+		execa.mockReset();
+	});
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("pipes instead of inheriting and streams lines to onOutput", async () => {
+		const execa = await getMockedExeca();
+		const iterable = vi.fn(() =>
+			(async function* () {
+				yield "line one";
+				yield "line two";
+			})(),
+		);
+		execa.mockReturnValueOnce({ iterable });
+
+		const lines: string[] = [];
+		await executeTask(
+			"build",
+			{ command: "node -v" },
+			"npm",
+			process.cwd(),
+			(line) => {
+				lines.push(line);
+			},
+		);
+
+		expect(lines).toEqual(["line one", "line two"]);
+		expect(execa).toHaveBeenCalledWith(
+			"node",
+			["-v"],
+			expect.objectContaining({ all: true, buffer: false }),
+		);
+		expect(iterable).toHaveBeenCalledWith({ from: "all" });
+	});
+
+	it("wraps iteration failures in TaskExecutionError with the exit code", async () => {
+		const execa = await getMockedExeca();
+		execa.mockReturnValueOnce({
+			iterable: () =>
+				(async function* () {
+					yield "some output";
+					throw new MockExecaError({ exitCode: 3 });
+				})(),
+		});
+
+		try {
+			await executeTask(
+				"bad",
+				{ command: "false" },
+				"npm",
+				process.cwd(),
+				() => {},
+			);
+			throw new Error("expected throw");
+		} catch (err: unknown) {
+			expect(err).toBeInstanceOf(TaskExecutionError);
+			expect((err as TaskExecutionError).exitCode).toBe(3);
+		}
+	});
+});
