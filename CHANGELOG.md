@@ -5,6 +5,27 @@ All notable changes to antiscaler are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/saintparish4/antiscaler/compare/v0.3.0...v0.4.0) (2026-07-19)
+
+
+### Features
+
+* add antiscaler diff command and test gate ([ab42c9b](https://github.com/saintparish4/antiscaler/commit/ab42c9bab909bd58392dfd57a37ac81131292112))
+* add antiscaler pr check/replay/report commands and CI workflow ([f3e3693](https://github.com/saintparish4/antiscaler/commit/f3e369378a3577b1d33ac49342224230e8337469))
+* add change intelligence pipeline with impact and workspace check ([7a29730](https://github.com/saintparish4/antiscaler/commit/7a2973092d0f56906ed87f78e05bbe50430b937a))
+* **affected:** add --affected flag with transitive workspace cascade ([0be778c](https://github.com/saintparish4/antiscaler/commit/0be778c489369aaa00723d17830339294fd05559))
+* **cache:** add remote cache backends, TTL eviction, and cost modeling ([43428bf](https://github.com/saintparish4/antiscaler/commit/43428bfbf7760f2a811509d292ce08deda5b9226))
+* CLI & DX polish: doctor, interactive init, progress output, dry-run ([940605d](https://github.com/saintparish4/antiscaler/commit/940605d8adbf45709295d4043cf8632b601e7fbf))
+* **cli:** add uv-style visuals layer to CLI ([a880392](https://github.com/saintparish4/antiscaler/commit/a880392c4a58d373ba7ebb3ba5ec7d72c297e8a2))
+* **semantic:** signature-level differ with per-symbol change kinds ([72bacba](https://github.com/saintparish4/antiscaler/commit/72bacba3c283c571119bd5ad60300de4955e1cde))
+* trace-driven lint optimization, route wiring, and stability fixes ([836304c](https://github.com/saintparish4/antiscaler/commit/836304cd2aef16c6df06df82b7bc7e1d3e4bb35c))
+* **tracer:** add Next/Vite trace plugins and scoped build support ([1b0a950](https://github.com/saintparish4/antiscaler/commit/1b0a95014fb298fcb61e33eb79950a724b57b8fb))
+
+
+### Bug Fixes
+
+* fix:  ([11acf69](https://github.com/saintparish4/antiscaler/commit/11acf69377ac4e76f1eb33ebe1e1c2ea6266bb78))
+
 ## [Unreleased]
 
 ## [1.1.1] - 2026-07-19
