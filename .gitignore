@@ -15,6 +15,9 @@ dist/
 # Tests & coverage
 coverage/
 
+# Benchmark results (regenerate with `pnpm bench`; CI publishes artifacts)
+benchmarks/results/
+
 # Logs & debug
 *.log
 npm-debug.log*

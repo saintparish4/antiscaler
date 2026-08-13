@@ -22,17 +22,18 @@ pnpm lint
 # Type check only
 pnpm typecheck
 
-# Build all entry points — required before running integration tests
+# Build all entry points — required before running E2E tests
 pnpm build
 
 # Smoke test the built CLI
 node dist/cli.js --help
 
-# Run unit tests (no build required)
+# Run every tier once
 pnpm test:run
 
-# Run integration tests (requires dist/ — run pnpm build first)
-pnpm test:integration
+# Run one tier
+pnpm test:integration   # boundaries
+pnpm test:e2e           # user workflows (requires dist/ — run pnpm build first)
 
 # Run all tests + coverage
 pnpm test:all
@@ -142,11 +143,20 @@ Example: adding support for a new package manager (say, `bun`).
 
 ## Testing Guide
 
-Tests use Vitest. Files live next to the code they test inside `__tests__/`
-directories.
+Tests use Vitest, split into three tiers — see the Testing section of
+`CLAUDE.md` for which tier a given test belongs in:
+
+- **Unit** — isolated behavior, one module with its collaborators substituted.
+  Lives next to the code it tests inside `__tests__/` directories.
+- **Integration** — boundaries between real modules, or a real edge such as the
+  filesystem or git. Lives in `src/__tests__/integration/`.
+- **E2E** — user workflows driven through the built `dist/cli.js`. Lives in
+  `src/__tests__/e2e/`.
+
+Fixture workspaces are shared across tiers at `src/__tests__/fixtures/`.
 
 ```bash
-# Build first — integration tests require dist/cli.js
+# Build first — E2E tests require dist/cli.js
 pnpm build
 
 # Run all tests once
@@ -155,8 +165,9 @@ pnpm test:run
 # Run a specific test file
 pnpm vitest run src/core/graph/__tests__/dag.test.ts
 
-# Run integration tests only
+# Run a single tier
 pnpm test:integration
+pnpm test:e2e
 
 # Watch mode
 pnpm test

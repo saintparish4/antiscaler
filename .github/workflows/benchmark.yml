@@ -1,0 +1,42 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [alpha]
+  workflow_dispatch:
+
+jobs:
+  bench:
+    name: Benchmark / ubuntu / node 22
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Install hyperfine
+        run: sudo apt-get update && sudo apt-get install -y hyperfine
+
+      # pipefail so the startup gate's exit code survives the tee.
+      - name: Run benchmarks
+        shell: bash
+        run: set -o pipefail; node benchmarks/bench.mjs --assert-startup-ms 200 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/
+          if-no-files-found: ignore

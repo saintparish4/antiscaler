@@ -7,7 +7,7 @@ import { execa } from "execa";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const fixture = path.join(here, "fixtures/basic-monorepo");
+const fixture = path.join(here, "../fixtures/basic-monorepo");
 const cli = path.resolve(here, "../../../dist/cli.js");
 
 describe("E2E: basic-monorepo", () => {

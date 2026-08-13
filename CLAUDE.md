@@ -1,21 +1,90 @@
-# CLAUDE.md
+# Project Instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+A general guide for working in a codebase. Fill in **Stack** and **Commands** per project. The rest applies unless the project explicitly overrides it.
+
+## Stack
+
+`antiscaler` — an adaptive dev orchestration CLI (task DAG, content caching, runtime detection).
+
+- **Language**: TypeScript, ESM only (`"type": "module"`). Node ≥ 20, pnpm ≥ 10.
+- **Build**: tsup — three entry points: `src/index.ts` (library), `src/cli/index.ts` (`antiscaler` binary), `src/tracer/index.ts` (webpack/Vite tracer plugins).
+- **CLI**: Commander.js.
+- **Key libraries**: zod (config schema and defaults), jiti (loads `antiscale.config.ts` with no build step), execa (process execution), fast-glob (input hashing), ts-morph (semantic change analysis), picocolors, string-argv.
+- **Tooling**: Biome (format + lint + import organization), Vitest with v8 coverage, TypeScript (`tsc --noEmit`).
+
+Note: the config file is `antiscale.config.ts` and the cache directory is `.antiscale/` — the shorter `antiscale` name, not `antiscaler`. This discrepancy is intentional.
+
+## Architecture
+
+Layered, with dependencies pointing one way: `cli → core → adapters`. Interfaces (ports) are owned by `core`; adapters implement them and import nothing from `core` except types.
+
+- `src/cli/` — Commander wiring, option parsing, terminal rendering. The user-facing surface.
+- `src/core/` — orchestration logic, grouped by capability (`cache`, `graph`, `execution`, `semantic`, `scope`, `detection`, `plugins`, `history`, `insight`) rather than by technical kind. No `utils/`, `helpers/`, or `services/` buckets.
+- `src/adapters/` — the outside world: `pm/` (npm/pnpm/yarn command builders), `runtimes/` (Node/Bun/Deno detection), `frameworks/` (Next.js/Vite/generic, each wrapped as a plugin via `wrapFrameworkAsPlugin`). One file per implementation.
+- `src/tracer/` — separate `tsup` entry point; webpack (`next-plugin.ts`) and Vite (`vite-plugin.ts`) plugins that intercept module resolution and write session JSON to `.antiscale/traces/`.
+- `src/types/` — contracts shared across layers.
+
+Rules:
+
+- Business logic must not live in command handlers. A command parses options, calls `createContext()`, delegates to `core`, and renders the result. A command file growing branches and conditionals means the logic belongs in `core`.
+- `core` must not print or exit. It reports through the progress/reporter interface and throws typed errors from `core/errors.ts` (`AntiscaleError` subclasses with a machine-readable `.code` and a user-facing `.hint`); only the CLI top level catches `AntiscaleError` → exit 1, unexpected errors → exit 2.
+- Side effects live at the edges and arrive through injectable interfaces — `runTasksWithDeps` takes a `TaskExecutor`, defaulting to the real one. This is what keeps the suite unit-heavy: unit tests never shell out.
+- Config is loaded once, at one wiring point (`cli/context.ts:createContext()`), which also detects PM/runtime/framework, builds the task DAG, and computes the git-diff `packageScopes`/`affectedPackages` pre-filter. Modules receive what they need instead of re-reading config themselves.
+- `src/cli/index.ts` registers commands with a dynamic `import()` inside each `action()` callback, deferring heavy deps (execa, jiti, fast-glob) until a command actually runs — this is what keeps `antiscaler --help` fast. It's a sanctioned exception to "prefer top-level imports"; don't add new lazy imports elsewhere without the same justification.
+- A new capability is a new directory under `core/` plus a thin command — not another branch inside an existing module.
+
+### Core pipeline
+
+The request path most commands follow: `createContext()` → `core/graph` builds the `TaskGraph` (Kahn's algorithm, cycle detection) → `core/execution:runTasksWithDeps()` resolves DAG levels and runs each task (concurrency-limited, or via the event-driven `scheduler.ts` when `useScheduler` is set) → `core/cache` hashes inputs and reads/writes `.antiscale/cache/cache.json`, narrowed by `core/cache/git-diff.ts` to changed packages. `core/plugins` fans out `onDetect`/`onHash`/`onBeforeExecute`/`onAfterExecute` hooks to registered `BuildPlugin`s (framework adapters are wrapped as plugins). `core/scope` and `core/semantic` (ts-morph-based signature/body diffing, symbol graph, blast-radius, test-impact selection) drive change-intelligence features (`antiscaler diff`, `pr check`, `antiscaler impact`); predictions are logged to `.antiscale/history/impact.jsonl` for shadow-mode validation before test skipping is ever enabled.
+
+## Code Style
+
+- Follow the project's formatter and existing conventions. Do not invent a parallel style.
+- Prefer named exports.
+- Avoid `any`, non-null assertions (`!`), and other untyped escape hatches; Biome blocks the first two. A `biome-ignore` needs a reason and should be rare.
+- Semicolons, quotes, and similar punctuation follow the language and the formatter. This project uses tabs and double quotes for TS/JS, 2-space for JSON (Biome-enforced).
+- Use the `node:` protocol for Node built-ins, `import type` for type-only imports, and `import * as z from "zod"` (never `import { z }`) — all Biome-enforced.
+- Use `Uint8Array` instead of `Buffer` (Biome blocks `Buffer` in `src/`).
+- Prefer optional chaining/nullish coalescing and early returns over deep nesting; combine conditions in one `if` rather than nesting them.
+- Avoid shortening variable names (`packageScopes`, not `pkgScopes`).
+
+## Testing
+
+Three tiers, each answering a different question. Write the test at the cheapest tier that can answer yours.
+
+| Tier | Tests | Lives in | Runs against |
+|------|-------|----------|--------------|
+| Unit | Isolated behavior — one module, collaborators substituted | `src/**/__tests__/*.test.ts`, beside its source | Source |
+| Integration | Boundaries — real modules meeting each other, or a real edge (filesystem, git, config loading) | `src/__tests__/integration/*.integration.test.ts` | Source |
+| E2E | User workflows — the shipped binary doing what someone asked it to do | `src/__tests__/e2e/*.e2e.test.ts` | Built `dist/` |
+
+- **Unit tests isolate.** Inject at the seams the architecture already provides — `runTasksWithDeps` takes a `TaskExecutor`; pass a mock. Never shell out, never touch the network, never depend on the surrounding repo's git state. A test that needs a fixture workspace to say anything true is not a unit test.
+- **Integration tests exercise boundaries.** The contract between two real collaborators: does the config loader hand the planner something the planner accepts, does the cache store survive a round-trip through a real filesystem, does `git-diff.ts` read a real repo correctly. Assert on the seam — not on terminal output, which belongs to E2E.
+- **E2E tests describe workflows in the user's words.** "A fresh build runs every task in dependency order." "A second run hits the cache." "Changing `utils` rebuilds `web` but skips `docs`." They spawn `dist/cli.js` against a fixture workspace and assert on exit codes and stdout, so they need `pnpm build` first. Keep this tier small — it is the slowest and most brittle; add to it only for a workflow a user would notice breaking.
+- Fixture workspaces are shared across tiers at `src/__tests__/fixtures/`.
+- New business logic requires tests. A bug fix requires a test that fails before it.
+- Name tests for the behavior they document (`test_cache_hit`, `test_cache_miss`, `test_incremental_invalidation`), not for the function they call.
+- Use the project's test runner — Vitest projects `unit`, `integration`, `e2e`. Do not introduce another without justification.
+- This repo skews heavily unit-first by design; dependency injection is what makes that possible, so reach for a slower tier only when the question genuinely lives at a boundary or in a workflow.
+- Coverage targets enforced in CI: 70% lines/statements/functions, 60% branches.
+- Read and copy the style of similar existing tests when adding new cases.
 
 ## Commands
 
 ```bash
-pnpm build          # compile to dist/ via tsup
-pnpm clean          # delete dist/
-pnpm test           # vitest in watch mode
-pnpm test:run       # vitest single-run (unit only)
-pnpm test:integration  # integration tests only
-pnpm test:all       # run all tests + coverage
-pnpm check          # biome check --write (format + lint + organize imports)
-pnpm lint           # biome check (read-only) + tsc --noEmit — used in CI
-pnpm format         # biome format --write .
-pnpm format:check   # biome format (read-only)
-pnpm typecheck      # tsc --noEmit
+pnpm build             # compile to dist/ via tsup
+pnpm clean             # delete dist/
+pnpm test              # vitest in watch mode
+pnpm test:run          # vitest single-run
+pnpm test:integration  # integration project only (boundaries)
+pnpm test:e2e          # e2e project only — requires pnpm build first
+pnpm test:all          # all tests + coverage
+pnpm typecheck         # tsc --noEmit
+pnpm check             # biome check --write (format + lint + organize imports)
+pnpm lint:typecheck    # biome check (read-only) + tsc --noEmit — used in CI
+pnpm format            # biome format --write .
+pnpm format:check      # biome format (read-only)
+pnpm bench             # benchmark suite (--quick via pnpm bench:quick)
 
 # Run a single test file
 pnpm vitest run src/core/graph/__tests__/dag.test.ts
@@ -24,99 +93,9 @@ pnpm vitest run src/core/graph/__tests__/dag.test.ts
 node dist/cli.js --help
 ```
 
-Node ≥ 20, pnpm ≥ 10 required.
+See `CONTRIBUTING.md` for full dev-setup steps. Prefer running a single test file (as above) over the full suite while iterating. Never run a blanket `pnpm update` — bump one package at a time so lockfile diffs stay reviewable. Cross-platform correctness is CI's job (`ubuntu`/`windows`/`macos` × Node 20/22/24 in `.github/workflows/ci.yml`), not a local cross-compile step — prefer `node:path` helpers over manual string splitting so the matrix actually catches regressions.
 
-## Architecture
-
-### Entry points (tsup builds three)
-
-| Export | Source | Purpose |
-|--------|--------|---------|
-| `dist/index.js` | `src/index.ts` | Public library API — re-exports `defineConfig` and types |
-| `dist/cli.js` | `src/cli/index.ts` | `antiscaler` binary (Commander.js, lazy-imports each command) |
-| `dist/tracer.js` | `src/tracer/index.ts` | Next.js / Vite webpack/Vite plugins for module tracing |
-
-### Core pipeline (`src/core/`)
-
-The central request path for every CLI command is:
-
-1. **`cli/context.ts:createContext()`** — builds `AntiscaleContext`. This is the single wiring point: loads config (via jiti), detects PM/runtime/framework, builds the task DAG, optionally loads the workspace PackageGraph, runs the git-diff pre-filter to compute `packageScopes`, and evaluates the `lintOnly` flag. Every command calls this once then passes it to `toRunOptions()`.
-
-2. **`core/config/`** — `loader.ts` uses jiti to load `antiscale.config.ts` without a build step; `schema.ts` holds the Zod schema with all defaults. The schema drives both validation and the `AntiscaleConfig`/`ResolvedAntiscaleConfig` types in `src/types/index.ts`.
-
-3. **`core/graph/`** — `dag.ts` is the `TaskGraph` class (Kahn's algorithm for topological levels, cycle detection). `package-graph.ts` discovers workspace packages and auto-generates cross-package task entries. `planner.ts` wires config into a `TaskGraph`. `import-graph.ts` is the file-level reverse import graph (`Map<file, dependents[]>` plus `computeAffectedFiles` BFS), derived on demand from the persisted SymbolGraph — not persisted itself, since derivation is cheap string work. `workspace-check.ts` compares actual imports against declared manifest dependencies (surfaced as `antiscaler workspace check`, a CI gate that exits 1 on violations).
-
-4. **`core/execution/`** — `runner.ts:runTasksWithDeps()` is the main execution loop: resolves DAG levels → `mapLimit` for concurrency within each level (or the event-driven `scheduler.ts` path when `useScheduler` is true) → calls `runOneTask` per task. `executor.ts` shells out via execa.
-
-5. **`core/cache/`** — `hashing.ts` SHA-256s input globs (respecting `packageScopes`); `store.ts` reads/writes `.antiscale/cache/cache.json`; `git-diff.ts` narrows hashing to changed packages.
-
-6. **`core/plugins/`** — `BuildPlugin` interface with four hooks: `onDetect`, `onHash`, `onBeforeExecute`, `onAfterExecute`. Framework adapters (`src/adapters/frameworks/`) are wrapped as plugins. `registry.ts` fans out hook calls.
-
-7. **`core/scope/`** — `trace-loader.ts` reads recorded trace sessions; `critical-path.ts` checks whether changed files intersect declared critical routes, driving the `lintOnly` optimization.
-
-8. **`core/semantic/`** — ts-morph–based change intelligence. `surface.ts` extracts each file's exported surface (signature vs. body per symbol); `differ.ts` classifies changes (`non-impacting` / `internal` / `breaking`) with per-symbol `changeKind` and a confidence score; `symbol-graph.ts` is the persisted, incrementally-updated symbol index (`.antiscale/graph/symbols.json`) recording imports, exports, and signature/body hashes per file; `blast-radius.ts` traces `File → Import → Package → Task` — differ-gated seeds, symbol-gated first hop, structural BFS beyond it, with an aggregate confidence score; `test-impact.ts` builds `TestTrace` (test → import closure) / `CoverageMap` (source → tests) and selects affected tests — behavior-conservative (body-only edits still select importers' tests; only `non-impacting` changes select zero) with select-all on config changes. The differ is wired into `diff` and `pr check`; the full pipeline is surfaced by `antiscaler impact` (`cli/commands/impact.ts`) — report-only, reusing the `pr check` verdict vocabulary, logging every prediction to `.antiscale/history/impact.jsonl` (`core/history/impact-log.ts`) for shadow-mode validation before test skipping is ever enabled.
-
-### Adapters (`src/adapters/`)
-
-- `frameworks/` — Next.js, Vite, and generic adapters implementing `FrameworkAdapter`; each is registered as a plugin via `wrapFrameworkAsPlugin`.
-- `pm/` — npm, pnpm, yarn command builders.
-- `runtimes/` — Node, Bun, Deno detection.
-
-### Tracer (`src/tracer/`)
-
-Webpack (`next-plugin.ts`) and Vite (`vite-plugin.ts`) plugins that intercept module resolution during builds/dev runs and write session JSON to `.antiscale/traces/`. `writer.ts` handles the file writes.
-
-### Tests
-
-- Unit tests: `src/**/__tests__/*.test.ts` (co-located with source)
-- Integration tests: `src/__tests__/integration/*.integration.test.ts` with fixture workspaces under `src/__tests__/integration/fixtures/`
-- Coverage targets: 70% lines/statements, 64% functions, 60% branches (enforced in CI)
-
-## Code conventions
-
-**Imports**
-- Always use `node:` protocol for Node built-ins (`node:fs`, `node:path`, etc.)
-- Use `import type` for type-only imports (Biome enforces `useImportType`)
-- `import * as z from "zod"` — never `import { z } from "zod"`
-
-**Types**
-- Use `Uint8Array` instead of `Buffer` (Biome blocks `Buffer` in `src/`)
-- Prefer `Uint8Array` and web-platform types
-
-**Formatting**
-- Tabs for TypeScript/JavaScript, 2-space for JSON (enforced by Biome)
-- Double quotes for JS strings
-
-**Errors**
-- Throw typed errors from `src/core/errors.ts` (`AntiscaleError`, `ConfigError`, `CycleError`). The CLI top-level catches `AntiscaleError` and exits with code 1; unexpected errors exit with code 2.
-
-## Development guidelines
-
-- ALWAYS read `CONTRIBUTING.md` first for the dev-setup and testing workflow.
-- ALWAYS add a test case for changed behavior.
-- PREFER unit tests co-located in `__tests__/` for single-module behavior; reserve `*.integration.test.ts` for CLI/cross-package behavior — this repo skews unit-heavy by design (dozens of unit files vs. a handful of integration files).
-- PREFER Vitest's `toMatchSnapshot`/`toMatchInlineSnapshot` over long substring assertions for multi-line output (CLI reports, generated graphs); none exist yet, so set the pattern from nearby tests if you add the first one.
-- Cross-platform correctness is CI's job (`ubuntu`/`windows`/`macos` × Node 20/22/24 matrix in `.github/workflows/ci.yml`), not a local cross-compile step — prefer `node:path` helpers over manual string splitting so the matrix actually catches regressions.
-- PREFER running a single test file (`pnpm vitest run <path>`) over the full suite while iterating.
-- AVOID non-null assertions (`!`), `any`, and `// biome-ignore` comments — Biome already blocks the first two; a `biome-ignore` needs a reason and should be rare.
-- PREFER optional chaining/nullish coalescing and early returns over deep nesting to handle fallibility.
-- PREFER combining conditions in one `if` over nested `if` statements.
-- NEVER run a blanket `pnpm update` — bump one package at a time so lockfile diffs stay reviewable.
-- NEVER assume `pnpm lint` warnings are pre-existing — `alpha` is expected to be clean; if CI is red, your change introduced it.
-- ALWAYS read and copy the style of similar tests when adding new cases.
-- PREFER top-level imports — the sanctioned exception is the lazy dynamic `import()` inside CLI command `action()` callbacks (see Key design decisions below); don't add new dynamic imports elsewhere.
-- AVOID shortening variable names — use `packageScopes`, not `pkgScopes`.
-- PREFER `{@link TypeName}` references in TSDoc comments.
-
-## Key design decisions
-
-- **Lazy CLI imports**: `src/cli/index.ts` registers commands with dynamic `import()` in `action()` callbacks. This keeps `antiscaler --help` under 200 ms by deferring heavy deps (execa, jiti, fast-glob) until a command actually runs.
-- **DI in runner**: `runTasksWithDeps` accepts a `TaskExecutor` parameter (defaults to the real `executeTask`). Tests inject a mock — never shell out in unit tests.
-- **Typed errors**: Every failure throws an `AntiscaleError` subclass with a machine-readable `.code` string. The CLI top-level catches `AntiscaleError` → exit 1; unexpected errors → exit 2.
-
-## Commit messages
-
-Follow conventional commits: `<type>: <subject>` (imperative mood, ≤ 72 chars, no trailing period).
+All PRs must pass `pnpm lint:typecheck` and `pnpm build`. The default branch is `alpha`, which is expected to be lint-clean — a warning there is from your change, not pre-existing. Commits follow conventional commits: `<type>: <subject>`, imperative mood, ≤ 72 chars, no trailing period.
 
 | Type | Purpose |
 |------|---------|
@@ -130,10 +109,29 @@ Follow conventional commits: `<type>: <subject>` (imperative mood, ≤ 72 chars,
 | `types` | Type definition updates |
 | `ci` | CI/CD changes |
 
-## PR requirements
+## Rules
 
-All PRs must pass `pnpm lint` and `pnpm build` before review. `pnpm lint` runs `biome check` (which covers both linting and formatting) plus `tsc --noEmit` — running `pnpm format:check` separately is redundant. Run `pnpm format` locally to fix formatting before pushing. The default branch is `alpha`.
+- Do not introduce dependencies without justification.
+- Do not modify the database schema without a migration.
+- Do not expose secrets.
+- Make the code obvious: good names, clear control flow, small functions, strong types, clear abstractions, tests.
+- Use tests to document behavior (`test_cache_hit`, `test_cache_miss`, `test_incremental_invalidation`).
+- Use documentation for system-level concepts (`docs/architecture.md`, `docs/incremental-computation.md`).
 
-## Config file note
+### Comments
 
-The config file is `antiscale.config.ts` (shorter `antiscale` name, not `antiscaler`). The cache directory is `.antiscale/cache/`. This naming discrepancy is intentional.
+Do not narrate the implementation. Do not add comments that restate what the code does. Do not generate comments for every function, variable, loop, or block. Do not add comments solely to make generated code appear documented. When reviewing AI-generated code, delete unnecessary comments rather than keeping them because they look helpful.
+
+Comments must explain **why**, not **what**, unless the what is genuinely difficult to understand.
+
+Only add comments when they explain:
+
+- Why a decision was made, or why something is implemented a certain way
+- Non-obvious constraints, invariants, or design decisions
+- Algorithmic reasoning
+- Performance considerations
+- Safety requirements
+- External or system constraints
+- Compatibility requirements or workarounds
+- Important architectural decisions
+- Behavior that would otherwise be surprising

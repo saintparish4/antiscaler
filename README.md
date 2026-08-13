@@ -96,18 +96,31 @@ export default defineConfig({
 
 ## Performance
 
-Measured on a real Next.js 16 / Turbopack app (32 routes, TypeScript, Windows i9):
+Every number here is reproducible: the benchmark harness in [`benchmarks/`](benchmarks/README.md) generates deterministic fixture projects and measures the CLI with [hyperfine](https://github.com/sharkdp/hyperfine) (median over many runs). Regenerate this table on your own hardware with:
 
-| Scenario | Time |
-|----------|------|
-| Cold run — no cache, full Next.js build | ~41–49 s |
-| Warm run — inputs unchanged, task skipped | 0 ms |
+```bash
+pnpm build && pnpm bench
+```
 
-The warm run is not "fast" — it is **zero**. Antiscaler hashes inputs, finds a match, and exits without spawning the build process at all. The only overhead on a cache hit is the hash computation and a single `cache.json` read, which is sub-millisecond.
+The [Benchmark workflow](.github/workflows/benchmark.yml) also runs the harness on public CI hardware for every push to `alpha` — the table lands in the job summary with raw JSON attached as an artifact, and **CI fails if CLI startup exceeds 200 ms**, so that claim is an enforced regression gate rather than a promise.
 
-CLI startup overhead (e.g. `antiscaler --help`) is consistently under 200 ms regardless of project size.
+| Scenario | What it measures | Median |
+|----------|------------------|-------:|
+| CLI startup — `antiscaler --help` | Lazy-import design keeps the binary interactive (200 ms CI gate) | 70 ms |
+| Warm run — cache hit, 1,000 files | Full wall time of a skipped build: process start + config load + input hashing + one `cache.json` read | 399 ms |
+| Warm run — cache hit, 100 files | The fixed floor: process start + config load dominate; hashing adds only ~50 µs/file | 351 ms |
+| Warm run — cache hit, 10,000 files | Even at 10,000 files, a skipped build stays under a second | 817 ms |
+| Cold run — no cache, 1,000 files | End-to-end execution of a near-zero task, including spawning it and writing the cache | 454 ms |
+| Orchestration overhead — cold run minus the raw wrapped command | What Antiscaler itself adds on top of your build tool | 427 ms |
 
-> Cold-run time reflects your build tool, not Antiscaler. Run `antiscaler insight` after a few builds to see per-task timings for your own project.
+<sub>Measured 2026-08-04 with `pnpm bench` (hyperfine 1.20.0, 10–20 runs per scenario, median reported): AMD Ryzen 5 5625U (12 threads, 7 GB RAM), Windows 11, Node v24.13.0, antiscaler 1.1.1 @ 7c0aa28. CI refreshes these numbers on every push to `alpha`.</sub>
+
+<!-- To refresh: run `pnpm bench`, copy the medians from
+     benchmarks/results/latest.md, and update the environment line above. -->
+
+On a cache hit the configured build command is **never spawned** — Antiscaler hashes inputs, finds a match, and exits. The wall time you pay is process startup plus hashing, which is why warm-run time depends on file count rather than on how long your build takes.
+
+> Illustrative end-to-end context (not a benchmark): on a real Next.js 16 / Turbopack app (32 routes, TypeScript), a cold run is ~41–49 s — effectively all of it the Next.js build itself — and a warm run skips spawning that build entirely. Cold-run time reflects your build tool, not Antiscaler. Run `antiscaler insight` after a few builds to see per-task timings for your own project.
 
 ---
 
