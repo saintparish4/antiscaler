@@ -6,10 +6,10 @@ import type {
 } from "../core/config/schema.js";
 import type { PluginRegistry } from "../core/plugins/registry.js";
 
-// User-facing config (the object passed to defineConfig
+/** The object a user passes to `defineConfig`: every field optional. */
 export type AntiscaleConfig = z.input<typeof antiscaleConfigSchema>;
 
-// Fully-validated config with all defaults applied
+/** The same config after validation, with every default filled in. */
 export type ResolvedAntiscaleConfig = z.output<typeof antiscaleConfigSchema>;
 
 export type Strategy = ResolvedAntiscaleConfig["strategy"];
@@ -18,7 +18,7 @@ export type TaskConfig = z.infer<typeof taskConfigSchema>;
 
 export type CacheConfig = ResolvedAntiscaleConfig["cache"];
 
-//Built by the DAG layer (core/graph): class implements this contract
+/** Implemented by `core/graph`; consumers depend on this, not the class. */
 export interface TaskGraph {
 	addTask(name: string): void;
 	addDependency(task: string, dep: string): void;

@@ -31,6 +31,7 @@ import {
 	computeAffectedFiles,
 } from "../graph/import-graph.js";
 import type { PackageGraph } from "../graph/package-graph.js";
+import { readFileAtRef } from "../vcs/git.js";
 import type { ClassifyResult, SemanticClass } from "./differ.js";
 import { classifyChange } from "./differ.js";
 import { updateSymbolGraph } from "./symbol-graph.js";
@@ -112,7 +113,7 @@ export async function traceBlastRadius(
 	}
 
 	const readBefore =
-		options.readBefore ?? ((rel: string) => gitShow(cwd, baseRef, rel));
+		options.readBefore ?? ((rel: string) => readFileAtRef(cwd, baseRef, rel));
 	const readAfter =
 		options.readAfter ??
 		(async (rel: string) => {
@@ -294,22 +295,6 @@ function fileToPackage(
 		}
 	}
 	return bestName;
-}
-
-async function gitShow(
-	cwd: string,
-	baseRef: string,
-	relPath: string,
-): Promise<string | null> {
-	try {
-		const { execa } = await import("execa");
-		const { stdout } = await execa("git", ["show", `${baseRef}:${relPath}`], {
-			cwd,
-		});
-		return stdout;
-	} catch {
-		return null;
-	}
 }
 
 function toPosix(p: string): string {

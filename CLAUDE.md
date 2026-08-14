@@ -79,11 +79,11 @@ pnpm test:run          # vitest single-run
 pnpm test:integration  # integration project only (boundaries)
 pnpm test:e2e          # e2e project only — requires pnpm build first
 pnpm test:all          # all tests + coverage
-pnpm typecheck         # tsc --noEmit
-pnpm check             # biome check --write (format + lint + organize imports)
-pnpm lint:typecheck    # biome check (read-only) + tsc --noEmit — used in CI
 pnpm format            # biome format --write .
 pnpm format:check      # biome format (read-only)
+pnpm lint              # biome check . (static analysis, read-only)
+pnpm typecheck         # tsc --noEmit
+pnpm check             # biome check --write (local autofix: format + lint + organize imports)
 pnpm bench             # benchmark suite (--quick via pnpm bench:quick)
 
 # Run a single test file
@@ -95,7 +95,9 @@ node dist/cli.js --help
 
 See `CONTRIBUTING.md` for full dev-setup steps. Prefer running a single test file (as above) over the full suite while iterating. Never run a blanket `pnpm update` — bump one package at a time so lockfile diffs stay reviewable. Cross-platform correctness is CI's job (`ubuntu`/`windows`/`macos` × Node 20/22/24 in `.github/workflows/ci.yml`), not a local cross-compile step — prefer `node:path` helpers over manual string splitting so the matrix actually catches regressions.
 
-All PRs must pass `pnpm lint:typecheck` and `pnpm build`. The default branch is `alpha`, which is expected to be lint-clean — a warning there is from your change, not pre-existing. Commits follow conventional commits: `<type>: <subject>`, imperative mood, ≤ 72 chars, no trailing period.
+All PRs must pass `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build`. The default branch is `alpha`, which is expected to be lint-clean — a warning there is from your change, not pre-existing. Commits follow conventional commits: `<type>: <subject>`, imperative mood, ≤ 72 chars, no trailing period.
+
+The `.husky/pre-commit` hook gates every commit through `pnpm format:check` → `pnpm lint` → `pnpm typecheck` → `pnpm test:run`, in that order; a failure at any step blocks the commit before the next step runs.
 
 | Type | Purpose |
 |------|---------|

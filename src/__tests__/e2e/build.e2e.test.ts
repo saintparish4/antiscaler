@@ -93,7 +93,15 @@ describe("E2E: --affected cascade (git-enabled)", () => {
 		await execa("node", [cli, "build"], { cwd: cwdAff });
 	});
 
-	afterAll(() => rmSync(cwdAff, { recursive: true, force: true }));
+	afterAll(() => {
+		try {
+			rmSync(cwdAff, { recursive: true, force: true });
+		} catch {
+			// Windows holds handles on a temp dir briefly after the git and CLI
+			// child processes exit, so rmSync throws EPERM. Cleanup failing must
+			// not fail the suite; the OS reclaims the directory.
+		}
+	});
 
 	it("utils change cascades to web+api but skips docs (no utils dependency)", async () => {
 		// Commit a change to utils

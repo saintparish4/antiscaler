@@ -1,14 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildImportGraph } from "../../graph/import-graph.js";
 import type { FileImpact } from "../blast-radius.js";
-import {
-	assembleBlastRadius,
-	toFileImpact,
-	traceBlastRadius,
-} from "../blast-radius.js";
+import { assembleBlastRadius, toFileImpact } from "../blast-radius.js";
 import type { ImportEntry, SymbolGraph } from "../symbol-graph.js";
 
 function makeSymbolGraph(files: Record<string, ImportEntry[]>): SymbolGraph {
@@ -257,83 +250,5 @@ describe("toFileImpact", () => {
 		});
 		expect(impact.propagates).toBe(false);
 		expect(impact.impactedSymbols).toEqual([]);
-	});
-});
-
-describe("traceBlastRadius", () => {
-	const tmpDirs: string[] = [];
-	function makeTmpDir(): string {
-		const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-blast-"));
-		tmpDirs.push(dir);
-		return dir;
-	}
-	afterEach(() => {
-		for (const d of tmpDirs) {
-			try {
-				rmSync(d, { recursive: true, force: true });
-			} catch {
-				// Windows holds directory handles briefly; the OS cleans these up eventually.
-			}
-		}
-		tmpDirs.length = 0;
-	});
-
-	function writeFixture(dir: string, files: Record<string, string>): void {
-		for (const [rel, content] of Object.entries(files)) {
-			const abs = path.join(dir, rel);
-			mkdirSync(path.dirname(abs), { recursive: true });
-			writeFileSync(abs, content);
-		}
-	}
-
-	const AUTH_BEFORE =
-		"export function login(name: string): string { return name; }";
-
-	it("runs the full pipeline: differ gating plus graph traversal", async () => {
-		const dir = makeTmpDir();
-		writeFixture(dir, {
-			// Signature change vs AUTH_BEFORE: extra parameter.
-			"src/auth.ts":
-				"export function login(name: string, strict: boolean): string { return name; }",
-			"src/app.ts":
-				'import { login } from "./auth.js";\nexport const boot = (): string => login("a", true);',
-			"src/other.ts": "export const other = 1;",
-		});
-
-		const radius = await traceBlastRadius(dir, {
-			changedFiles: ["src/auth.ts"],
-			readBefore: async () => AUTH_BEFORE,
-		});
-
-		expect(radius).not.toBeNull();
-		expect(radius?.changed[0]?.classification).toBe("breaking");
-		expect(radius?.affectedFiles).toEqual(["src/app.ts", "src/auth.ts"]);
-	});
-
-	it("does not propagate a body-only edit", async () => {
-		const dir = makeTmpDir();
-		writeFixture(dir, {
-			// Body change vs AUTH_BEFORE: same signature, different return expr.
-			"src/auth.ts":
-				"export function login(name: string): string { return name.trim(); }",
-			"src/app.ts":
-				'import { login } from "./auth.js";\nexport const boot = (): string => login("a");',
-		});
-
-		const radius = await traceBlastRadius(dir, {
-			changedFiles: ["src/auth.ts"],
-			readBefore: async () => AUTH_BEFORE,
-		});
-
-		expect(radius?.changed[0]?.classification).toBe("internal");
-		expect(radius?.affectedFiles).toEqual(["src/auth.ts"]);
-	});
-
-	it("returns null when git is unavailable and no changed files are given", async () => {
-		const dir = makeTmpDir();
-		writeFixture(dir, { "src/a.ts": "export const a = 1;" });
-		// A fresh tmp dir is not a git repository, so getChangedFiles fails.
-		const radius = await traceBlastRadius(dir, { baseRef: "HEAD~1" });
-		expect(radius).toBeNull();
 	});
 });

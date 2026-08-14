@@ -36,7 +36,9 @@ export class TaskGraph {
 			throw new ConfigError(`Task "${target}" not found in graph`);
 		}
 
-		// Collect subgraph reachable from target (BFS/DFS over dependsOn)
+		// Only the target's own dependency closure participates: unrelated
+		// tasks must not gate it, and a cycle elsewhere in the graph is not
+		// this target's problem.
 		const subgraph = new Set<string>();
 		const stack = [target];
 		while (stack.length) {
@@ -49,8 +51,9 @@ export class TaskGraph {
 			}
 		}
 
-		// Compute in-degree within subgraph
-		// "in-degree" here = number of tasks in subgraph that depend ON this node
+		// Edges are stored as "task → its dependencies", so in-degree here
+		// counts *dependents*: Kahn's runs over the reversed graph, which is
+		// why the levels come out leaves-first and need reversing at the end.
 		const inDegree = new Map<string, number>();
 		for (const node of subgraph) inDegree.set(node, 0);
 		for (const node of subgraph) {
@@ -61,7 +64,6 @@ export class TaskGraph {
 			}
 		}
 
-		// Kahn's -- level by level
 		const levels: string[][] = [];
 		let queue = [...subgraph].filter((n) => inDegree.get(n) === 0);
 		let processed = 0;
@@ -72,7 +74,6 @@ export class TaskGraph {
 			const next: string[] = [];
 
 			for (const node of queue) {
-				// node is processed; each direct dependency loses one dependent
 				for (const dep of this.deps.get(node) ?? []) {
 					if (subgraph.has(dep)) {
 						const newDeg = (inDegree.get(dep) ?? 0) - 1;
@@ -85,14 +86,14 @@ export class TaskGraph {
 			queue = next;
 		}
 
-		// Cycle check
+		// Anything Kahn's could not drain sits on a cycle.
 		if (processed < subgraph.size) {
 			const remaining = [...subgraph].filter((n) => (inDegree.get(n) ?? 0) > 0);
 			throw new CycleError(remaining);
 		}
 
-		// levels[0] = leaves (no dependents), last level = target
-		// Reverse so target's level is first (execution order: deepest deps first)
+		// Callers want execution order — deepest dependencies first — and the
+		// reversed traversal above emits the target's own level last.
 		const result = levels.reverse();
 		this.levelCache.set(
 			target,

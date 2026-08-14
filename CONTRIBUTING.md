@@ -7,20 +7,16 @@ git clone <repo-url>
 cd antiscaler
 pnpm install
 
-# Format, lint, and organize imports (writes in place) — use this locally
-pnpm check
+# Formatting → Linting → Typechecking (read-only gate, same order as CI / pre-commit)
+pnpm format:check
+pnpm lint
+pnpm typecheck
 
 # Format only (writes in place)
 pnpm format
 
-# Check formatting without writing
-pnpm format:check
-
-# Lint and typecheck without writes — same as CI
-pnpm lint
-
-# Type check only
-pnpm typecheck
+# Autofix format + lint + organize imports (writes in place) — use locally
+pnpm check
 
 # Build all entry points — required before running E2E tests
 pnpm build
@@ -46,7 +42,10 @@ src/
 ├── cli/                  # Commander-based CLI entry and commands
 │   ├── index.ts          # Program definition, lazy command registration
 │   ├── context.ts        # createContext() — DRY bootstrap for all commands
-│   └── commands/         # One file per command (build, dev, run, init, etc.)
+│   ├── execute.ts        # Shared run path for build/dev/run (progress + insights)
+│   ├── commands/         # One file per command — parse, delegate, render
+│   ├── render/           # All terminal output; writes through the Printer
+│   └── visuals/          # Printer, colors, spinners, prompts, ANSI primitives
 │
 ├── core/
 │   ├── config/
@@ -56,12 +55,18 @@ src/
 │   ├── graph/
 │   │   ├── dag.ts        # TaskGraph class — addTask, addDependency, toLevels
 │   │   ├── package-graph.ts  # Workspace discovery and cross-package task generation
-│   │   └── planner.ts    # buildGraph() — config -> TaskGraph
+│   │   ├── planner.ts    # buildGraph() — config -> TaskGraph
+│   │   ├── validation.ts # validateTaskGraph() — backs `antiscaler check`
+│   │   ├── workspace-check.ts  # Pure declared-vs-imported dependency audit
+│   │   └── workspace-audit.ts  # Gathers manifests + symbol graph, runs the audit
 │   │
 │   ├── cache/
 │   │   ├── hashing.ts    # SHA-256 content hashing via fast-glob + crypto
 │   │   ├── store.ts      # Read/write JSON cache file
 │   │   └── git-diff.ts   # Git-diff pre-filter for package scoping
+│   │
+│   ├── vcs/
+│   │   └── git.ts        # The git porcelain every capability reads through
 │   │
 │   ├── execution/
 │   │   ├── executor.ts   # executeTask() — runs command via execa
@@ -75,19 +80,42 @@ src/
 │   │   └── framework.ts       # Next.js / Vite / generic detection
 │   │
 │   ├── insight/
-│   │   ├── analyzer.ts   # computeInsights() — stats from results + cache
-│   │   └── reporter.ts   # printInsights(), printEnv() — TTY-aware output
+│   │   └── analyzer.ts   # computeInsights() — stats from results + cache
+│   │
+│   ├── doctor/
+│   │   └── diagnostics.ts    # Environment checks behind `antiscaler doctor`
+│   │
+│   ├── pr/
+│   │   ├── check.ts      # Classify a PR's TypeScript changes into a verdict
+│   │   ├── replay.ts     # Intersect PR changes with a recorded trace session
+│   │   └── report.ts     # Combined check + replay, as JSON or markdown
+│   │
+│   ├── impact/
+│   │   └── predict.ts    # Test-impact prediction plus shadow-mode logging
+│   │
+│   ├── scaffold/
+│   │   └── config-template.ts  # Defaults and template behind `antiscaler init`
 │   │
 │   ├── plugins/
 │   │   ├── types.ts      # BuildPlugin interface and hook signatures
 │   │   └── registry.ts   # PluginRegistry — fans out hook calls
 │   │
+│   ├── progress/
+│   │   └── reporter.ts   # The progress port; every renderer lives in cli/
+│   │
 │   ├── scope/
 │   │   ├── trace-loader.ts   # Reads recorded trace sessions
+│   │   ├── trace-summary.ts  # Reduces a session to the `trace analyze` numbers
+│   │   ├── trace-scope.ts    # Resolves --scope to the packages a session hit
+│   │   ├── task-filter.ts    # Package sets -> runner predicates and priorities
 │   │   └── critical-path.ts  # Checks changed files against critical routes
 │   │
 │   ├── semantic/
-│   │   └── differ.ts     # AST-based diff classifier via ts-morph
+│   │   ├── differ.ts     # AST-based diff classifier via ts-morph
+│   │   ├── file-change.ts    # Classifies a file against a git ref
+│   │   ├── verdict.ts    # Shared build verdict for `pr check` and `impact`
+│   │   ├── blast-radius.ts   # Reverse-graph traversal from changed files
+│   │   └── test-impact.ts    # Which tests a change requires
 │   │
 │   └── errors.ts         # AntiscaleError hierarchy (Config, Cycle, Task, Cache)
 │
@@ -117,6 +145,10 @@ src/
 - **Typed errors**: Every failure path throws an `AntiscaleError` subclass
   with a machine-readable `.code` string. The CLI error boundary formats
   these for the user.
+- **`core` never prints**: `core` reports through the progress port and throws
+  typed errors; every byte of terminal output is produced in `cli/render/` and
+  written through the `Printer`, which is what makes `-q`/`-v` work uniformly.
+  A `console.log` in `core` — or anywhere outside `cli/render` — is a bug.
 
 ## How to Add an Adapter
 
@@ -219,4 +251,6 @@ All commits must follow the conventional commit format:
 
 ## PR Requirements
 
-All PRs must pass `pnpm lint` (Biome check + type check) and `pnpm build` before review. `pnpm lint` already covers formatting via `biome check`. Run `pnpm format` locally to fix formatting before pushing.
+All PRs must pass `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build` before review. Run `pnpm format` (or `pnpm check`) locally to fix formatting and lint issues before pushing.
+
+The pre-commit hook (`.husky/pre-commit`) gates every commit through `pnpm format:check` → `pnpm lint` → `pnpm typecheck` → `pnpm test:run`, in that order — each step must pass before the next runs.

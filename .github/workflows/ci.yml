@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint:
-    name: Lint & Typecheck
+    name: Format, Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -23,8 +23,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Lint & Typecheck
+      - name: Format
+        run: pnpm run format:check
+
+      - name: Lint
         run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
 
   test:
     name: Test / ${{ matrix.os }} / node ${{ matrix.node }}

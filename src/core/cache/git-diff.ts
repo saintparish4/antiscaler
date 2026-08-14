@@ -7,6 +7,8 @@
 
 import path from "node:path";
 import type { PackageGraph } from "../graph/package-graph.js";
+import { packageForFile } from "../graph/package-graph.js";
+import { listChangedFiles } from "../vcs/git.js";
 
 export interface GitDiffOptions {
 	cwd: string;
@@ -17,22 +19,7 @@ export async function getChangedFiles(
 	options: GitDiffOptions,
 ): Promise<string[] | null> {
 	const { cwd, baseRef = "HEAD~1" } = options;
-	try {
-		const { execa } = await import("execa");
-		// The trailing `--` terminates option parsing so a crafted baseRef (e.g.
-		// one starting with `-`) is always treated as a revision, never a git flag.
-		const { stdout } = await execa(
-			"git",
-			["diff", "--name-only", baseRef, "--"],
-			{ cwd },
-		);
-		return stdout
-			.split("\n")
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
-	} catch {
-		return null;
-	}
+	return listChangedFiles(cwd, baseRef);
 }
 
 export function changedFilesToPackages(
@@ -42,14 +29,8 @@ export function changedFilesToPackages(
 ): Set<string> {
 	const out = new Set<string>();
 	for (const file of files) {
-		const abs = path.resolve(cwd, file);
-		for (const pkg of graph.packages) {
-			const rel = path.relative(pkg.dir, abs);
-			if (!rel.startsWith("..") && !path.isAbsolute(rel)) {
-				out.add(pkg.name);
-				break;
-			}
-		}
+		const owner = packageForFile(path.resolve(cwd, file), graph);
+		if (owner !== null) out.add(owner.name);
 	}
 	return out;
 }

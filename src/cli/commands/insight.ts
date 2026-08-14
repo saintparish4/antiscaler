@@ -1,10 +1,10 @@
-export async function registerInsightAction(): Promise<void> {
-	const { createContext } = await import("../context.js");
-	const { readCache } = await import("../../core/cache/store.js");
-	const { computeInsights } = await import("../../core/insight/analyzer.js");
-	const { printInsights } = await import("../../core/insight/reporter.js");
+import { readCache } from "../../core/cache/store.js";
+import { computeInsights } from "../../core/insight/analyzer.js";
+import { createContext } from "../context.js";
+import { renderInsights } from "../render/insight.js";
 
+export async function registerInsightAction(): Promise<void> {
 	const ctx = await createContext();
 	const cache = await readCache(ctx.cacheDir);
-	printInsights(computeInsights([], cache, ctx.config.cache.costPerMissMs));
+	renderInsights(computeInsights([], cache, ctx.config.cache.costPerMissMs));
 }

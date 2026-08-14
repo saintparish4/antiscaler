@@ -1,7 +1,7 @@
-export async function registerEnvAction(): Promise<void> {
-	const { createContext } = await import("../context.js");
-	const { printEnv } = await import("../../core/insight/reporter.js");
+import { createContext } from "../context.js";
+import { renderEnv } from "../render/insight.js";
 
+export async function registerEnvAction(): Promise<void> {
 	const ctx = await createContext();
-	printEnv(ctx.pm, ctx.runtime, ctx.framework);
+	renderEnv(ctx.pm, ctx.runtime, ctx.framework);
 }

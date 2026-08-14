@@ -32,6 +32,10 @@ export default defineConfig({
 					name: "integration",
 					include: ["src/__tests__/integration/**/*.integration.test.ts"],
 					testTimeout: 30_000,
+					// Setup in this tier builds fixture workspaces and git repos —
+					// the same order of work as the tests, so it gets the same budget
+					// rather than vitest's 10s hook default.
+					hookTimeout: 30_000,
 				},
 			},
 			{
@@ -42,6 +46,11 @@ export default defineConfig({
 					// Spawns the built dist/cli.js against fixture workspaces; a cold
 					// build plus git setup runs well past the integration budget.
 					testTimeout: 60_000,
+					// The heaviest work in this tier is in beforeAll, not the test:
+					// copy a fixture, `git init`, two commits, then a full cold CLI
+					// run to warm the cache. That is five subprocess spawns, which
+					// blows vitest's 10s hook default on Windows every time.
+					hookTimeout: 60_000,
 				},
 			},
 		],

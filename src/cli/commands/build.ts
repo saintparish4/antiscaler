@@ -1,9 +1,18 @@
-import type { TaskRunResult } from "../../core/execution/runner.js";
+import {
+	affectedTaskFilter,
+	bothFilters,
+	tracedPackagePriority,
+} from "../../core/scope/task-filter.js";
+import { tracedPackagesForSession } from "../../core/scope/trace-scope.js";
+import { createContext, toRunOptions } from "../context.js";
+import { executeTarget, reportRunInsights } from "../execute.js";
+import { renderDryRunPlan } from "../render/plan.js";
 
 export interface BuildActionOptions {
 	concurrency?: number;
+	/** Trace session whose packages should be built first. */
 	scope?: string;
-	/** When true, only run tasks for packages affected by the current git diff (including cascade dependents). */
+	/** Only run tasks for packages the current git diff affects (with cascade dependents). */
 	affected?: boolean;
 	/** Print the task plan without executing anything. */
 	dryRun?: boolean;
@@ -12,72 +21,33 @@ export interface BuildActionOptions {
 export async function registerBuildAction(
 	opts: BuildActionOptions = {},
 ): Promise<void> {
-	const { createContext, toRunOptions } = await import("../context.js");
-
 	const ctx = await createContext();
 
 	if (opts.dryRun) {
-		const levels = ctx.graph.toLevels("build");
-		console.log(
-			`[dry-run] Task plan for "build" (${levels.flat().length} task(s)):`,
-		);
-		for (const [i, level] of levels.entries()) {
-			console.log(`  Level ${i + 1}: ${level.join(", ")}`);
-		}
+		renderDryRunPlan("build", ctx.graph.toLevels("build"));
 		return;
 	}
 
-	const { runTasksWithDeps } = await import("../../core/execution/runner.js");
-	const { loadPackageGraph } = await import(
-		"../../core/graph/package-graph.js"
-	);
-	const { readCache } = await import("../../core/cache/store.js");
-	const { computeInsights } = await import("../../core/insight/analyzer.js");
-	const { printInsights } = await import("../../core/insight/reporter.js");
-	const { loadTrace, tracedPackages } = await import(
-		"../../core/scope/trace-loader.js"
-	);
-	const { createTaskEventProgress } = await import("../visuals/task-events.js");
-
 	const runOptions = toRunOptions(ctx, opts);
-	const progress = createTaskEventProgress("Running build tasks...");
-	runOptions.onTaskEvent = progress.onTaskEvent;
-	if (progress.onTaskOutput !== undefined) {
-		runOptions.onTaskOutput = progress.onTaskOutput;
-	}
 
 	if (opts.scope) {
-		const trace = await loadTrace(ctx.cwd, opts.scope);
-		const pkgGraph = await loadPackageGraph(ctx.cwd);
-		const traced = tracedPackages(trace, pkgGraph);
-		runOptions.priorityOf = (taskName) => {
-			const pkg = taskName.split(":")[0];
-			return traced.has(pkg ?? "") ? 0 : Number.POSITIVE_INFINITY;
-		};
+		const traced = await tracedPackagesForSession(ctx.cwd, opts.scope);
+		runOptions.priorityOf = tracedPackagePriority(traced);
 		runOptions.useScheduler = true;
 	}
 
 	if (opts.affected && ctx.affectedPackages !== undefined) {
-		const affectedPkgs = ctx.affectedPackages;
-		const affectedFilter = (taskName: string) => {
-			const colon = taskName.indexOf(":");
-			if (colon === -1) return true;
-			return affectedPkgs.has(taskName.slice(0, colon));
-		};
-		const existing = runOptions.taskFilter;
-		runOptions.taskFilter = existing
-			? (name) => existing(name) && affectedFilter(name)
-			: affectedFilter;
+		runOptions.taskFilter = bothFilters(
+			runOptions.taskFilter,
+			affectedTaskFilter(ctx.affectedPackages),
+		);
 	}
 
-	let results: TaskRunResult[];
-	try {
-		results = await runTasksWithDeps("build", ctx.graph, runOptions);
-	} finally {
-		progress.finish();
-	}
-	const cache = await readCache(ctx.cacheDir);
-	printInsights(
-		computeInsights(results, cache, ctx.config.cache.costPerMissMs),
+	const results = await executeTarget(
+		"build",
+		ctx,
+		runOptions,
+		"Running build tasks...",
 	);
+	await reportRunInsights(ctx, results);
 }

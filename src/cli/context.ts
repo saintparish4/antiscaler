@@ -24,6 +24,9 @@ import type {
 	AntiscaleContext,
 	ResolvedAntiscaleConfig,
 } from "../types/index.js";
+import { reportPluginError } from "./render/plugin-errors.js";
+import { errorLines } from "./render/writer.js";
+import { getPrinter } from "./visuals/printer.js";
 
 function buildRemoteAdapter(
 	config: ResolvedAntiscaleConfig,
@@ -47,7 +50,6 @@ function buildRemoteAdapter(
 		});
 	}
 
-	// type === "s3"
 	if (remote.bucket === undefined) {
 		throw new ConfigError(
 			'cache.remote.bucket is required when cache.remote.type is "s3"',
@@ -114,8 +116,9 @@ export async function createContext(
 		}
 	}
 
-	// If lintOnlyForNonCritical is enabled, check whether changed files touch
-	// any critical routes. If not, restrict execution to lint-named tasks only.
+	// Both a trace and a changed-file list are required to prove a change is
+	// non-critical. Without either, the safe answer is to run everything —
+	// this optimization must never skip work on an unproven assumption.
 	let lintOnly = false;
 	const perf = config.performance;
 	if (perf?.lintOnlyForNonCritical && (perf.criticalPaths?.length ?? 0) > 0) {
@@ -134,8 +137,9 @@ export async function createContext(
 					perf.criticalPaths ?? [],
 				);
 				if (lintOnly) {
-					process.stderr.write(
-						"[antiscaler] No critical-path changes detected — running lint tasks only\n",
+					errorLines(
+						getPrinter(),
+						"[antiscaler] No critical-path changes detected — running lint tasks only",
 					);
 				}
 			}
@@ -145,7 +149,7 @@ export async function createContext(
 	const cacheDir = config.cache.directory;
 	const remoteCache = buildRemoteAdapter(config);
 
-	const plugins = new PluginRegistry();
+	const plugins = new PluginRegistry(reportPluginError);
 	plugins.register(wrapFrameworkAsPlugin(nextAdapter));
 	plugins.register(wrapFrameworkAsPlugin(viteAdapter));
 	plugins.register(wrapFrameworkAsPlugin(genericAdapter));

@@ -10,7 +10,7 @@ import type { RuntimeInfo } from "../../types/index.js";
  * Always returns a RuntimeAdapter -- falls back to node
  */
 export function detectRuntime(): RuntimeAdapter {
-	// Check process globals first (zero cost -- no subprocesses)
+	// Globals are free to check; probing for a binary costs a subprocess.
 	const g = globalThis as Record<string, unknown>;
 	if (typeof g["Bun"] !== "undefined") {
 		return bunAdapter;
@@ -18,8 +18,8 @@ export function detectRuntime(): RuntimeAdapter {
 	if (typeof g["Deno"] !== "undefined") {
 		return denoAdapter;
 	}
-	// Fallback: probe via subprocess (covers cases like running under node
-	// bun bun/deno are installed and could be the intended runtime)
+	// No Bun/Deno global means we are running under Node, whatever else may
+	// also be installed on the machine.
 	return nodeAdapter;
 }
 

@@ -1,5 +1,9 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import {
+	classifyFileAgainstRef,
+	DEFAULT_DIFF_BASE_REF,
+	toWorkspaceRelative,
+} from "../../core/semantic/file-change.js";
+import { renderClassification } from "../render/diff.js";
 
 export interface DiffActionOptions {
 	/** Git ref to compare against. Defaults to HEAD~1. */
@@ -10,67 +14,11 @@ export async function registerDiffAction(
 	filePath: string,
 	opts: DiffActionOptions = {},
 ): Promise<void> {
-	const { classifyChange } = await import("../../core/semantic/differ.js");
-	const { execa } = await import("execa");
-
 	const cwd = process.cwd();
-	const baseRef = opts.base ?? "HEAD~1";
-	const absPath = path.resolve(cwd, filePath);
-	// git pathspecs are always POSIX-separated internally, regardless of host
-	// OS — `path.relative` returns backslashes on Windows, which `git show`
-	// silently fails to resolve (falls into the catch below), making every
-	// file look "new" and every export look "added" (a false `breaking`).
-	const relPath = path.relative(cwd, absPath).replace(/\\/g, "/");
-
-	// Retrieve the file as it existed at baseRef.
-	// Falls back to empty string when the file is new (not yet in git history).
-	let before = "";
-	try {
-		const { stdout } = await execa("git", ["show", `${baseRef}:${relPath}`], {
-			cwd,
-		});
-		before = stdout;
-	} catch {
-		// New file or git unavailable — treat as empty baseline.
-	}
-
-	// Read current on-disk state. Falls back to empty string for deleted files.
-	let after = "";
-	try {
-		after = await readFile(absPath, "utf8");
-	} catch {
-		// Deleted file — treat as empty after.
-	}
-
-	const result = await classifyChange({ filePath: relPath, before, after });
-
-	const classLabel: Record<string, string> = {
-		"non-impacting": "non-impacting  (safe to skip build)",
-		internal: "internal       (implementation-only change)",
-		breaking: "breaking       (exported API changed)",
-	};
-
-	console.log(`\nFile:           ${result.filePath}`);
-	console.log(`Base ref:       ${baseRef}`);
-	console.log(`Classification: ${classLabel[result.classification]}`);
-	console.log(`Confidence:     ${Math.round(result.confidence * 100)}%`);
-
-	const { added, removed, changed } = result.exportedSymbols;
-	if (added.length > 0 || removed.length > 0 || changed.length > 0) {
-		console.log("\nExported symbol changes:");
-		if (added.length > 0) console.log(`  added:   ${added.join(", ")}`);
-		if (removed.length > 0) console.log(`  removed: ${removed.join(", ")}`);
-		if (changed.length > 0) {
-			console.log(
-				`  changed: ${changed.map((c) => `${c.name} [${c.kind}]`).join(", ")}`,
-			);
-		}
-	}
-
-	if (result.confidenceNotes.length > 0) {
-		console.log("\nConfidence lowered by:");
-		for (const note of result.confidenceNotes) {
-			console.log(`  - ${note}`);
-		}
-	}
+	const baseRef = opts.base ?? DEFAULT_DIFF_BASE_REF;
+	const relPath = toWorkspaceRelative(cwd, filePath);
+	renderClassification(
+		await classifyFileAgainstRef(cwd, relPath, baseRef),
+		baseRef,
+	);
 }

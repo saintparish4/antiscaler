@@ -1,7 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildImportGraph } from "../../graph/import-graph.js";
 import type { FileImpact } from "../blast-radius.js";
 import type { ImportEntry, SymbolGraph } from "../symbol-graph.js";
@@ -10,7 +7,6 @@ import {
 	buildTestTrace,
 	computeTestImpact,
 	defaultIsTestFile,
-	traceTestImpact,
 } from "../test-impact.js";
 
 function makeSymbolGraph(files: Record<string, ImportEntry[]>): SymbolGraph {
@@ -189,82 +185,5 @@ describe("computeTestImpact", () => {
 		);
 		expect(impact.affectedTests).toEqual(["checks/a.check.ts"]);
 		expect(impact.totalTests).toBe(1);
-	});
-});
-
-describe("traceTestImpact", () => {
-	const tmpDirs: string[] = [];
-	function makeTmpDir(): string {
-		const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-testimpact-"));
-		tmpDirs.push(dir);
-		return dir;
-	}
-	afterEach(() => {
-		for (const d of tmpDirs) {
-			try {
-				rmSync(d, { recursive: true, force: true });
-			} catch {
-				// Windows holds directory handles briefly; the OS cleans these up eventually.
-			}
-		}
-		tmpDirs.length = 0;
-	});
-
-	function writeFixture(dir: string, files: Record<string, string>): void {
-		for (const [rel, content] of Object.entries(files)) {
-			const abs = path.join(dir, rel);
-			mkdirSync(path.dirname(abs), { recursive: true });
-			writeFileSync(abs, content);
-		}
-	}
-
-	const AUTH_BEFORE =
-		"export function login(name: string): string { return name; }";
-	const FIXTURE = {
-		"src/app.ts":
-			'import { login } from "./auth.js";\nexport const boot = (): string => login("a");',
-		"src/app.test.ts":
-			'import { boot } from "./app.js";\nexport const t = boot();',
-		"src/unrelated.test.ts": "export const u = 1;",
-	};
-
-	it("a comment-only change selects zero tests", async () => {
-		const dir = makeTmpDir();
-		writeFixture(dir, {
-			...FIXTURE,
-			"src/auth.ts": `${AUTH_BEFORE}\n// clarifying comment`,
-		});
-
-		const result = await traceTestImpact(dir, {
-			changedFiles: ["src/auth.ts"],
-			readBefore: async () => AUTH_BEFORE,
-		});
-
-		expect(result?.radius.changed[0]?.classification).toBe("non-impacting");
-		expect(result?.tests.affectedTests).toEqual([]);
-		expect(result?.tests.totalTests).toBe(2);
-	});
-
-	it("a body-only change still selects the tests of transitive importers", async () => {
-		const dir = makeTmpDir();
-		writeFixture(dir, {
-			...FIXTURE,
-			"src/auth.ts":
-				"export function login(name: string): string { return name.trim(); }",
-		});
-
-		const result = await traceTestImpact(dir, {
-			changedFiles: ["src/auth.ts"],
-			readBefore: async () => AUTH_BEFORE,
-		});
-
-		expect(result?.radius.changed[0]?.classification).toBe("internal");
-		expect(result?.tests.affectedTests).toEqual(["src/app.test.ts"]);
-	});
-
-	it("returns null when git is unavailable and no changed files are given", async () => {
-		const dir = makeTmpDir();
-		writeFixture(dir, { "src/a.ts": "export const a = 1;" });
-		expect(await traceTestImpact(dir)).toBeNull();
 	});
 });

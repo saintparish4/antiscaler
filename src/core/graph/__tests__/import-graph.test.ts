@@ -1,13 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { ImportEntry, SymbolGraph } from "../../semantic/symbol-graph.js";
 import {
 	buildImportGraph,
 	computeAffectedFiles,
 	getDependents,
-	loadImportGraph,
 } from "../import-graph.js";
 
 function staticImport(module: string): ImportEntry {
@@ -243,46 +239,5 @@ describe("getDependents", () => {
 		expect(sorted(getDependents(graph, "src/a.ts"))).toEqual(["src/b.ts"]);
 		expect(sorted(getDependents(graph, "src\\a.ts"))).toEqual(["src/b.ts"]);
 		expect(sorted(getDependents(graph, "src/nope.ts"))).toEqual([]);
-	});
-});
-
-describe("loadImportGraph", () => {
-	const tmpDirs: string[] = [];
-	function makeTmpDir(): string {
-		const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-importgraph-"));
-		tmpDirs.push(dir);
-		return dir;
-	}
-	afterEach(() => {
-		for (const d of tmpDirs) {
-			try {
-				rmSync(d, { recursive: true, force: true });
-			} catch {
-				// Windows holds directory handles briefly; the OS cleans these up eventually.
-			}
-		}
-		tmpDirs.length = 0;
-	});
-
-	it("builds the graph end-to-end from real files and persists the index", async () => {
-		const dir = makeTmpDir();
-		const write = (rel: string, content: string) => {
-			const abs = path.join(dir, rel);
-			mkdirSync(path.dirname(abs), { recursive: true });
-			writeFileSync(abs, content);
-		};
-		write("src/auth.ts", "export function login(): string { return 'ok'; }");
-		write(
-			"src/app.ts",
-			'import { login } from "./auth.js";\nexport const boot = () => login();',
-		);
-
-		const graph = await loadImportGraph(dir);
-
-		expect(sorted(graph.dependents.get("src/auth.ts"))).toEqual(["src/app.ts"]);
-		const { loadSymbolGraph, defaultGraphDir } = await import(
-			"../../semantic/symbol-graph.js"
-		);
-		expect(await loadSymbolGraph(defaultGraphDir(dir))).not.toBeNull();
 	});
 });

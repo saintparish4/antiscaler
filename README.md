@@ -3,186 +3,150 @@
 [![npm version](https://img.shields.io/npm/v/antiscaler.svg)](https://www.npmjs.com/package/antiscaler)
 [![CI](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml)
 
-> **Stable — v1.0.** The public API (everything exported from `antiscaler` and `antiscaler/tracer`) follows [semantic versioning](https://semver.org): no breaking changes in minor or patch releases. Review the [CHANGELOG](./CHANGELOG.md) before upgrading.
+A build orchestrator that skips work you haven't changed — a task DAG, content-based caching, and workspace scoping, driven by `antiscale.config.ts`.
 
-Antiscaler is a build orchestrator that skips work you haven't changed. Drop a config file into any repo, declare your tasks and their inputs, and Antiscaler handles dependency ordering, content-based caching, and workspace scoping — without replacing your existing scripts.
-
-On the second run, unchanged tasks finish in milliseconds. In a CI environment with a shared remote cache, the second run can be just as fast as the first was locally.
+This README is for working **on** Antiscaler. Using it in your own project is documented in [docs/](./docs/getting-started.md).
 
 ---
 
-## Install
+## Requirements
+
+| | Version | Notes |
+|---|---|---|
+| Node | ≥ 20 | Enforced via `engines`; CI tests 20, 22, and 24 |
+| pnpm | ≥ 10 | Pinned by `packageManager` |
+| git | any recent | Needed to exercise `--affected`, `diff`, `impact`, and `pr *` — they no-op without a repo |
+
+Optional, only if you touch the matching area:
+
+- **`@aws-sdk/client-s3`** — dynamically imported by the S3 remote-cache backend (`s3-adapter.ts:49`) and deliberately not a declared dependency. Install it locally to exercise that path.
+- **[hyperfine](https://github.com/sharkdp/hyperfine)** — required by `pnpm bench`.
+
+---
+
+## Installation
 
 ```bash
-npm install -D antiscaler
-# or
-pnpm add -D antiscaler
-# or
-yarn add -D antiscaler
+git clone https://github.com/saintparish4/antiscaler.git
+cd antiscaler
+pnpm install
+pnpm build               # required before the CLI or E2E tests can run
+node dist/cli.js --help  # smoke test
 ```
-
-Node ≥ 20 required.
 
 ---
 
-## Quick start
+## Development
 
 ```bash
-# Scaffold a config (interactive)
-npx antiscaler init
-
-# Run your build (first run hashes inputs)
-npx antiscaler build
-
-# Run again — unchanged tasks are skipped
-npx antiscaler build
-
-# Check timing and cache stats
-npx antiscaler insight
+pnpm build             # compile all three entry points to dist/ via tsup
+pnpm clean             # delete dist/
+pnpm format            # biome format --write .
+pnpm format:check      # biome format (read-only)
+pnpm lint              # biome check . (static analysis, read-only)
+pnpm typecheck         # tsc --noEmit
+pnpm check             # biome check --write — local autofix (format + lint + organize imports)
+pnpm bench             # benchmark harness (pnpm bench:quick for a fast pass)
 ```
 
-After `init`, open `antiscale.config.ts` and add your tasks (see [Getting started](./docs/getting-started.md)).
+The default branch is `alpha`, and it is expected to be lint-clean — if `pnpm format:check`, `pnpm lint`, or `pnpm typecheck` is red, your change caused it.
+
+There is no watch build. The loop is `pnpm build && node dist/cli.js <command>`, run against a scratch project or one of the fixture workspaces in `src/__tests__/fixtures/`.
+
+`src/cli/index.ts` registers every command with a dynamic `import()` inside its `action()` callback, deferring execa, jiti, and fast-glob until a command actually runs. That is what keeps `antiscaler --help` fast, and it is the one sanctioned exception to the project's prefer-top-level-imports rule — the benchmark job fails if startup regresses past 200 ms.
+
+Benchmark methodology and how to reproduce the published numbers: [benchmarks/README.md](./benchmarks/README.md).
 
 ---
 
-## Minimal config
+## Testing
 
-```typescript
-import { defineConfig } from "antiscaler";
+Three tiers, each answering a different question. Write a test at the cheapest tier that can answer yours.
 
-export default defineConfig({
-  tasks: {
-    typecheck: {
-      command: "tsc --noEmit",
-      inputs: ["src/**/*", "tsconfig.json"],
-    },
-    build: {
-      command: "npm run build",
-      inputs: ["src/**/*", "package.json"],
-      dependsOn: ["typecheck"],
-    },
-    test: {
-      command: "npm test",
-      inputs: ["src/**/*", "tests/**/*"],
-      dependsOn: ["build"],
-    },
-  },
-});
-```
-
-`dependsOn` sets execution order. Tasks in the same level run in parallel.
-
----
-
-## Features
-
-| Feature | What it does |
-|---------|-------------|
-| **Content caching** | SHA-256 hashes input globs; skips tasks whose inputs haven't changed |
-| **Task DAG** | `dependsOn` builds a dependency graph; each level runs concurrently |
-| **Git-diff scoping** | Narrows hashing to changed packages, so untouched workspace packages always cache-hit |
-| **Workspace support** | Auto-discovers pnpm/npm/yarn workspace packages and generates cross-package tasks |
-| **`--affected` flag** | Runs only tasks whose package (or dependents) changed in the current branch |
-| **Remote cache** | Shares the cache across machines via HTTP or S3 — CI ↔ local, run A ↔ run B |
-| **Lint-only fast path** | Skips builds entirely when no critical route is touched (Next.js / Vite with tracer) |
-| **PR commands** | `pr check` classifies changed TypeScript semantically; `pr replay` intersects changes with recorded traces |
-| **Impact prediction** | `impact` classifies each change at the symbol level (signature vs. body vs. comment-only), traces the blast radius through a file-level import graph, and predicts which test files must run — report-only, with a confidence score |
-| **Workspace dependency check** | `workspace check` fails CI when a package imports a workspace sibling or external package it doesn't declare, or reaches into a sibling via a relative path |
-| **Event-driven scheduler** | Starts tasks the moment their dependencies finish instead of waiting for full DAG waves |
-| **Auto-detection** | Detects your package manager, runtime, and framework from lockfiles and project files |
-| **Doctor** | `antiscaler doctor` validates your config, checks Node version, and warns about cache size |
-
----
-
-## Performance
-
-Every number here is reproducible: the benchmark harness in [`benchmarks/`](benchmarks/README.md) generates deterministic fixture projects and measures the CLI with [hyperfine](https://github.com/sharkdp/hyperfine) (median over many runs). Regenerate this table on your own hardware with:
+| Tier | Tests | Lives in | Runs against |
+|------|-------|----------|--------------|
+| Unit | Isolated behavior — one module, collaborators substituted | `src/**/__tests__/*.test.ts` | Source |
+| Integration | Boundaries — real modules meeting, or a real edge (filesystem, git, config) | `src/__tests__/integration/` | Source |
+| E2E | User workflows through the shipped binary | `src/__tests__/e2e/` | Built `dist/` |
 
 ```bash
-pnpm build && pnpm bench
+pnpm test              # watch mode
+pnpm test:run          # every tier, once
+pnpm test:integration  # boundaries only
+pnpm test:e2e          # workflows only — run pnpm build first
+pnpm test:all          # everything + coverage
+pnpm vitest run src/core/graph/__tests__/dag.test.ts   # a single file
 ```
 
-The [Benchmark workflow](.github/workflows/benchmark.yml) also runs the harness on public CI hardware for every push to `alpha` — the table lands in the job summary with raw JSON attached as an artifact, and **CI fails if CLI startup exceeds 200 ms**, so that claim is an enforced regression gate rather than a promise.
-
-| Scenario | What it measures | Median |
-|----------|------------------|-------:|
-| CLI startup — `antiscaler --help` | Lazy-import design keeps the binary interactive (200 ms CI gate) | 70 ms |
-| Warm run — cache hit, 1,000 files | Full wall time of a skipped build: process start + config load + input hashing + one `cache.json` read | 399 ms |
-| Warm run — cache hit, 100 files | The fixed floor: process start + config load dominate; hashing adds only ~50 µs/file | 351 ms |
-| Warm run — cache hit, 10,000 files | Even at 10,000 files, a skipped build stays under a second | 817 ms |
-| Cold run — no cache, 1,000 files | End-to-end execution of a near-zero task, including spawning it and writing the cache | 454 ms |
-| Orchestration overhead — cold run minus the raw wrapped command | What Antiscaler itself adds on top of your build tool | 427 ms |
-
-<sub>Measured 2026-08-04 with `pnpm bench` (hyperfine 1.20.0, 10–20 runs per scenario, median reported): AMD Ryzen 5 5625U (12 threads, 7 GB RAM), Windows 11, Node v24.13.0, antiscaler 1.1.1 @ 7c0aa28. CI refreshes these numbers on every push to `alpha`.</sub>
-
-<!-- To refresh: run `pnpm bench`, copy the medians from
-     benchmarks/results/latest.md, and update the environment line above. -->
-
-On a cache hit the configured build command is **never spawned** — Antiscaler hashes inputs, finds a match, and exits. The wall time you pay is process startup plus hashing, which is why warm-run time depends on file count rather than on how long your build takes.
-
-> Illustrative end-to-end context (not a benchmark): on a real Next.js 16 / Turbopack app (32 routes, TypeScript), a cold run is ~41–49 s — effectively all of it the Next.js build itself — and a warm run skips spawning that build entirely. Cold-run time reflects your build tool, not Antiscaler. Run `antiscaler insight` after a few builds to see per-task timings for your own project.
+Unit tests never shell out — `runTasksWithDeps` takes a `TaskExecutor`, so tests inject a mock. Fixture workspaces are shared across tiers at `src/__tests__/fixtures/`. Coverage gates in CI: 70% lines/statements/functions, 60% branches.
 
 ---
 
-## CLI reference
+## Environment Variables
 
-```
-antiscaler <command> [options]
+Antiscaler takes no configuration from the environment — that lives in `antiscale.config.ts`. What it reads are standard terminal and CI signals:
 
-Commands:
-  init                       Scaffold antiscale.config.ts (interactive)
-  build [--affected]         Run the build task through the DAG
-  dev                        Start the dev server (framework-aware)
-  run <task>                 Run any named task
-  trace                      Run dev with module tracing enabled
-  trace analyze [sessionId]  Inspect a recorded trace session
-  insight                    Show per-task timings and cache hit rates
-  env                        Show detected runtime, PM, and framework
-  check                      Validate config and DAG without executing
-  doctor                     Health-check your environment and config
-  diff <file> [--base <ref>] Classify a single file change as non-impacting/internal/breaking
-  impact [--base <ref>]      Predict which tests a change requires (report-only; --json for CI)
-  workspace check [--json]   Detect undeclared dependencies — exits 1 on violations (CI gate)
-  pr check [--base <ref>]    Classify changed TypeScript files semantically
-  pr replay [--base <ref>]   Intersect PR changes with the last trace session
-  pr report [--base <ref>]   Combined JSON/Markdown report of check + replay
+| Variable | Read by | Effect |
+|---|---|---|
+| `NO_COLOR` | `visuals/color.ts`, `progress/reporter.ts`, `doctor.ts` | Disables color everywhere. Highest-priority env signal. |
+| `FORCE_COLOR` | `visuals/color.ts` | Forces color on when output is not a TTY. |
+| `CLICOLOR_FORCE` | `visuals/color.ts` | Same as `FORCE_COLOR`. |
+| `CI` | `progress/reporter.ts`, `doctor.ts` | Suppresses color and animated progress. |
+| `JPY_SESSION_NAME` | `visuals/progress.ts` | Detects a Jupyter session and falls back to line-based output. |
+| `ANTISCALE_TEST_NO_CLI_PROGRESS` | `visuals/printer.ts`, `visuals/progress.ts` | Test-only. Suppresses progress bars so concurrent output stays assertable. |
+| `ANTISCALER_TRACE` | Set by `antiscaler trace` | Exported to the spawned dev process. Nothing in Antiscaler reads it back — the tracer plugins are unconditional once installed. |
 
-Global options:
-  -V, --version              Show version
-  -h, --help                 Show help
-  -c, --concurrency <n>      Max parallel tasks per DAG level (build/dev/run)
-```
+Color precedence: `--color <when>` → `--no-color` → `NO_COLOR` → `FORCE_COLOR`/`CLICOLOR_FORCE` → TTY detection.
+
+To exercise the S3 remote-cache backend locally, note that the config schema has no credential fields — `cli/context.ts` passes only `bucket`, `prefix`, `region`, and `endpoint`, so authentication comes entirely from the AWS SDK default chain (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_PROFILE`, `AWS_REGION`) or an instance/OIDC role. Keep credentials out of config files; they are committed.
 
 ---
 
-## Documentation
+## Architecture
 
-| Guide | Contents |
-|-------|----------|
-| [Getting started](./docs/getting-started.md) | Single-repo setup from scratch, first cache hit |
-| [Monorepo](./docs/monorepo.md) | pnpm workspace setup, `--affected`, cascade scoping |
-| [Next.js](./docs/nextjs.md) | Tracer plugin, lint-only fast path |
-| [Vite](./docs/vite.md) | Vite plugin setup |
-| [PR commands](./docs/pr-commands.md) | `pr check`, `pr replay`, `pr report`, GitHub Actions |
-| [Impact & workspace check](./docs/impact-and-workspace.md) | `impact` test prediction, `workspace check` CI gate, known limitations |
-| [Remote cache](./docs/remote-cache.md) | HTTP and S3 backend setup |
-| [Config reference](./docs/config-reference.md) | Every config key, type, default, and example |
-| [Troubleshooting](./docs/troubleshooting.md) | Top 10 problems and fixes |
+Layered, dependencies pointing one way: `cli → core → adapters`. Ports are owned by `core`; adapters implement them and import nothing from `core` except types.
+
+| Directory | Role |
+|---|---|
+| `src/cli/` | Commander wiring, option parsing, terminal rendering |
+| `src/core/` | Orchestration logic, grouped by capability — `cache`, `graph`, `execution`, `semantic`, `scope`, `detection`, `plugins` |
+| `src/adapters/` | The outside world — package managers, runtimes, frameworks |
+| `src/tracer/` | Webpack and Vite plugins that record module resolution |
+| `src/types/` | Contracts shared across layers |
+
+`tsup` builds three entry points: `dist/index.js` (library API), `dist/cli.js` (the `antiscaler` binary), and `dist/tracer.js` (framework plugins).
+
+The request path for most commands: `cli/context.ts:createContext()` loads config, detects PM/runtime/framework, builds the task DAG, and computes git-diff scoping — then `core/execution:runTasksWithDeps()` walks DAG levels while `core/cache` hashes inputs against `.antiscale/cache/cache.json`.
+
+Two rules to know before your first PR: business logic does not live in command handlers, and `core` never prints or exits — it throws `AntiscaleError` subclasses and lets the CLI top level map them to exit codes (`AntiscaleError` → 1, unexpected → 2). Full detail in [CLAUDE.md](./CLAUDE.md).
+
+---
+
+## Deployment
+
+Antiscaler ships as an npm package; there is no server to deploy.
+
+```bash
+pnpm publish            # prepublishOnly runs `pnpm test:all && pnpm build`
+```
+
+Only `dist/` is published (`files: ["dist"]`). The package exposes `.` and `./tracer` through the `exports` map, both ESM-only (`"type": "module"`).
+
+Releases are currently **manual** — `.github/workflows/release.yml` has been removed, and `deploy.yml` and `security.yml` are empty placeholders. Before publishing: bump the version, update [CHANGELOG.md](./CHANGELOG.md), and confirm CI is green on `alpha`.
+
+Everything exported from `antiscaler` and `antiscaler/tracer` follows [semantic versioning](https://semver.org), so a breaking change to either surface cannot ship in a minor or patch release.
 
 ---
 
 ## Contributing
 
-```bash
-pnpm check          # format + lint + organize imports (writes in place) — use locally
-pnpm lint           # format + lint + typecheck, no writes — mirrors CI
-pnpm build          # compile to dist/
-pnpm test:run       # unit tests (no build required)
-pnpm test:integration  # integration tests (requires dist/ — run pnpm build first)
-pnpm test:all       # all tests + coverage
-```
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow and [CLAUDE.md](./CLAUDE.md) for architecture and code-style rules. The short version:
 
-All PRs must pass `pnpm lint` and `pnpm build` before review. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow.
+- All PRs must pass `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build`.
+- Changed behavior needs a test; a bug fix needs a test that fails before it.
+- Behavior changes that users can observe need a `docs/` update in the same PR.
+- Conventional commits: `<type>: <subject>`, imperative mood, ≤ 72 chars, no trailing period.
+- Bump one dependency at a time — never a blanket `pnpm update` — so lockfile diffs stay reviewable.
 
 ---
 

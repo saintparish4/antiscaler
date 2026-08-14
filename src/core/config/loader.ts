@@ -44,7 +44,8 @@ export async function loadConfig(
 				);
 			}
 		} else {
-			// TypeScript / JS / MJS: jiti for TS + ESM
+			// jiti transpiles TS and resolves ESM on the fly, so a .ts config
+			// needs no build step before antiscaler can read it.
 			const { createJiti } = await import("jiti");
 			const jiti = createJiti(import.meta.url);
 			const mod = await jiti.import(configPath);
@@ -52,7 +53,6 @@ export async function loadConfig(
 		}
 	}
 
-	// 3. Parse through Zod schema (applies defaults, validates)
 	const result = antiscaleConfigSchema.safeParse(raw);
 
 	if (!result.success) {

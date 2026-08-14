@@ -67,6 +67,32 @@ export async function loadPackageGraph(cwd: string): Promise<PackageGraph> {
 }
 
 /**
+ * Whether `filePath` lives inside `dir`.
+ *
+ * Deliberately not a `startsWith` prefix test. `loadPackageGraph` gets its
+ * directories from fast-glob, which returns POSIX-separated paths on every
+ * host, while the paths being matched against them come from git, a tracer,
+ * or `path.join` — native, so backslash-separated on Windows. The two never
+ * share a textual prefix there. `path.relative` normalizes both sides, and it
+ * also stops `packages/web` from swallowing `packages/website`.
+ */
+export function isInsideDirectory(dir: string, filePath: string): boolean {
+	const relative = path.relative(dir, filePath);
+	return !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+/** The workspace package owning `filePath`, or null if none does. */
+export function packageForFile(
+	filePath: string,
+	graph: PackageGraph,
+): WorkspacePackage | null {
+	for (const pkg of graph.packages) {
+		if (isInsideDirectory(pkg.dir, filePath)) return pkg;
+	}
+	return null;
+}
+
+/**
  * Auto-generate TaskConfig entries from package scripts. Naming convention:
  *   <package-name>:<script-name>
  * Existing user-defined tasks always win; we only fill gaps.

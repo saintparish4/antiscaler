@@ -34,7 +34,7 @@ export interface RunOptions {
 	useScheduler?: boolean;
 	/** Lower priority runs sooner (passed through to the scheduler). */
 	priorityOf?: (task: string) => number;
-	// Optional plugin registry. Defaults to an empty registry.
+	/** Hook fan-out for this run; pass an empty registry to opt out. */
 	plugins: PluginRegistry;
 	/** When set, hashTaskInputs only reads files inside these dirs. */
 	packageScopes?: string[];
@@ -47,9 +47,9 @@ export interface RunOptions {
 	remoteCache?: RemoteCacheAdapter;
 	/**
 	 * Called on each task lifecycle change (running/cached/done/failed) —
-	 * drive live output from these events (the CLI bridges them onto a
-	 * spinner via createTaskEventProgress, or use createProgressReporter()
-	 * for plain per-line output).
+	 * drive live output from these events. The CLI bridges them onto a spinner
+	 * via createTaskEventProgress, which degrades to per-line logging when
+	 * progress is hidden.
 	 */
 	onTaskEvent?: OnTaskEvent;
 	/**

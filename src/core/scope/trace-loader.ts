@@ -9,6 +9,7 @@ import path from "node:path";
 import type { TraceFile } from "../../tracer/types.js";
 import { ConfigError } from "../errors.js";
 import type { PackageGraph } from "../graph/package-graph.js";
+import { packageForFile } from "../graph/package-graph.js";
 
 export async function loadTrace(
 	cwd: string,
@@ -43,13 +44,9 @@ export function tracedPackages(
 	graph: PackageGraph,
 ): Set<string> {
 	const out = new Set<string>();
-	for (const m of trace.modules) {
-		for (const pkg of graph.packages) {
-			if (m.file === pkg.dir || m.file.startsWith(`${pkg.dir}/`)) {
-				out.add(pkg.name);
-				break;
-			}
-		}
+	for (const module of trace.modules) {
+		const owner = packageForFile(module.file, graph);
+		if (owner !== null) out.add(owner.name);
 	}
 	return out;
 }

@@ -6,11 +6,8 @@ import { Command, Option } from "commander";
 import { AntiscaleError } from "../core/errors.js";
 import type { ConcurrencyOpts } from "./parse-opts.js";
 import { parseConcurrency } from "./parse-opts.js";
-import {
-	getColors,
-	resolveColorChoice,
-	writeGlobalColorChoice,
-} from "./visuals/color.js";
+import { renderError, renderUnexpectedError } from "./render/error.js";
+import { resolveColorChoice, writeGlobalColorChoice } from "./visuals/color.js";
 import { Printer, setGlobalPrinter } from "./visuals/printer.js";
 
 const _dir = dirname(fileURLToPath(import.meta.url));
@@ -281,13 +278,14 @@ prCmd
 		},
 	);
 
+// The only place the process exits on error: typed AntiscaleErrors are the
+// expected failure mode (exit 1); anything else escaped a typed path and is a
+// bug worth a distinct exit code (exit 2).
 program.parseAsync(process.argv).catch((err: unknown) => {
-	const colors = getColors();
 	if (err instanceof AntiscaleError) {
-		console.error(`${colors.red(`[${err.code}]`)} ${err.message}`);
-		if (err.hint) console.error(colors.dim(`  Hint: ${err.hint}`));
+		renderError(err);
 		process.exit(1);
 	}
-	console.error("Unexpected error — please file a bug:", err);
+	renderUnexpectedError(err);
 	process.exit(2);
 });
