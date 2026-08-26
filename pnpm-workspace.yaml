@@ -6,3 +6,17 @@ overrides:
   # Note: vite is vitest's peer dep and therefore NOT subject to overrides — it is
   # pinned via the direct "vite" devDependency in package.json instead.
   "vitest>picomatch": "^4.0.4"
+  # Reached at runtime via ts-morph > @ts-morph/common > minimatch. Three DoS
+  # advisories below 5.0.9 (unbounded expansion length, exponential-time
+  # expansion of consecutive {} groups, and an incomplete fix for the former).
+  # minimatch declares ^5.0.5, so this stays inside its supported range.
+  "brace-expansion": "^5.0.9"
+  # Dev-only (tsup, vite, vitest). Below 8.5.23 a sourceMappingURL in attacker-
+  # controlled CSS makes postcss read arbitrary .map files when `from` is unset.
+  "postcss": "^8.5.23"
+  # Dev-only. <0.28.1 lets esbuild's dev server read arbitrary files on Windows;
+  # we never run that server, but the override also collapses the two esbuild
+  # copies (tsup's 0.27.x and tsx's 0.28.x) into one. Deliberately exceeds the
+  # "^0.27.0" tsup declares — verified against `pnpm build` and the full suite.
+  # Recheck on the next tsup bump, which should make this override redundant.
+  "esbuild": "^0.28.1"
