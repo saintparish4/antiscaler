@@ -49,7 +49,7 @@ pnpm check             # biome check --write — local autofix (format + lint + 
 pnpm bench             # benchmark harness (pnpm bench:quick for a fast pass)
 ```
 
-The default branch is `alpha`, and it is expected to be lint-clean — if `pnpm format:check`, `pnpm lint`, or `pnpm typecheck` is red, your change caused it.
+The default branch is `master`, and it is expected to be lint-clean — if `pnpm format:check`, `pnpm lint`, or `pnpm typecheck` is red, your change caused it.
 
 There is no watch build. The loop is `pnpm build && node dist/cli.js <command>`, run against a scratch project or one of the fixture workspaces in `src/__tests__/fixtures/`.
 
@@ -132,7 +132,7 @@ pnpm publish            # prepublishOnly runs `pnpm test:all && pnpm build`
 
 Only `dist/` is published (`files: ["dist"]`). The package exposes `.` and `./tracer` through the `exports` map, both ESM-only (`"type": "module"`).
 
-Releases are currently **manual** — `.github/workflows/release.yml` has been removed, and `deploy.yml` and `security.yml` are empty placeholders. Before publishing: bump the version, update [CHANGELOG.md](./CHANGELOG.md), and confirm CI is green on `alpha`.
+Releases are currently **manual** — `.github/workflows/release.yml` has been removed, and `deploy.yml` and `security.yml` are empty placeholders. Before publishing: bump the version, update [CHANGELOG.md](./CHANGELOG.md), and confirm CI is green on `master`.
 
 Everything exported from `link` and `link/tracer` follows [semantic versioning](https://semver.org), so a breaking change to either surface cannot ship in a minor or patch release.
 
