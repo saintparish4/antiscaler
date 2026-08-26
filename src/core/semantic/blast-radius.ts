@@ -76,7 +76,7 @@ export interface TraceBlastRadiusOptions {
 	packageGraph?: PackageGraph;
 	/** Task map (e.g. from the planner); matched by `<package>:` name prefix. */
 	tasks?: Record<string, TaskConfig>;
-	/** Where the persisted symbol graph lives. Default `.antiscale/graph/`. */
+	/** Where the persisted symbol graph lives. Default `.link/graph/`. */
 	graphDir?: string;
 	/** Reuse a prebuilt import graph (skips the symbol-graph update). */
 	importGraph?: ImportGraph;

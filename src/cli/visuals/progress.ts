@@ -112,7 +112,7 @@ export function detectSingleMode(): boolean {
 }
 
 function testProgressSuppressed(): boolean {
-	const flag = process.env["ANTISCALE_TEST_NO_CLI_PROGRESS"];
+	const flag = process.env["LINK_TEST_NO_CLI_PROGRESS"];
 	return flag !== undefined && flag !== "";
 }
 

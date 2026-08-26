@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Reproducible benchmark harness for Antiscaler.
+ * Reproducible benchmark harness for Link.
  *
  * Measures four things against deterministic generated fixture projects:
- *   1. CLI startup — `antiscaler --help`
+ *   1. CLI startup — `link --help`
  *   2. Warm run    — cache hit at 100 / 1,000 / 10,000 files (hashing scale)
  *   3. Cold run    — no cache, 1,000-file project
  *   4. Overhead    — cold run minus a raw baseline of the wrapped command,
- *                    i.e. Antiscaler's own orchestration cost
+ *                    i.e. Link's own orchestration cost
  *
  * Uses hyperfine (https://github.com/sharkdp/hyperfine) when it is on PATH,
  * otherwise falls back to a built-in timer with the same warmup/run protocol.
@@ -103,7 +103,7 @@ function moduleSource(index, randomInts) {
 
 // The executor splits commands on spaces (no shell quoting), so the task
 // command must stay quote-free. `node --version` is cheap and universal,
-// which keeps the cold run dominated by Antiscaler's own work — exactly what
+// which keeps the cold run dominated by Link's own work — exactly what
 // the overhead measurement needs.
 const fixtureConfig = `export default {
 	strategy: "adaptive",
@@ -118,12 +118,12 @@ const fixtureConfig = `export default {
 `;
 
 function generateFixture(fileCount) {
-	const dir = mkdtempSync(join(tmpdir(), `antiscaler-bench-${fileCount}-`));
+	const dir = mkdtempSync(join(tmpdir(), `link-bench-${fileCount}-`));
 	writeFileSync(
 		join(dir, "package.json"),
 		`${JSON.stringify(
 			{
-				name: `antiscaler-bench-fixture-${fileCount}`,
+				name: `link-bench-fixture-${fileCount}`,
 				private: true,
 				version: "0.0.0",
 			},
@@ -131,7 +131,7 @@ function generateFixture(fileCount) {
 			2,
 		)}\n`,
 	);
-	writeFileSync(join(dir, "antiscale.config.ts"), fixtureConfig);
+	writeFileSync(join(dir, "link.config.ts"), fixtureConfig);
 	const sourceDir = join(dir, "src");
 	mkdirSync(sourceDir);
 	const randomInts = seededInts(fileCount);
@@ -297,7 +297,7 @@ function collectEnvironment(timingTool) {
 		readFileSync(join(repoRoot, "package.json"), "utf8"),
 	);
 	return {
-		antiscalerVersion: packageJson.version,
+		linkVersion: packageJson.version,
 		commit,
 		node: process.version,
 		os: `${platform()} ${release()} (${arch()})`,
@@ -311,7 +311,7 @@ function collectEnvironment(timingTool) {
 
 function buildMarkdown(environment, measured, orchestrationOverheadMs) {
 	const lines = [
-		"### Antiscaler benchmarks",
+		"### Link benchmarks",
 		"",
 		"| Scenario | Median | Mean ± σ | Min | Runs |",
 		"|----------|-------:|---------:|----:|-----:|",
@@ -326,7 +326,7 @@ function buildMarkdown(environment, measured, orchestrationOverheadMs) {
 	);
 	lines.push(
 		"",
-		`Environment: ${environment.cpu} (${environment.cores} cores, ${environment.memoryGb} GB RAM), ${environment.os}, Node ${environment.node}, antiscaler ${environment.antiscalerVersion} @ ${environment.commit}, measured with ${environment.timingTool} on ${environment.generatedAt}.`,
+		`Environment: ${environment.cpu} (${environment.cores} cores, ${environment.memoryGb} GB RAM), ${environment.os}, Node ${environment.node}, link ${environment.linkVersion} @ ${environment.commit}, measured with ${environment.timingTool} on ${environment.generatedAt}.`,
 		"",
 		"Reproduce with `pnpm build && pnpm bench` — see `benchmarks/README.md` for methodology.",
 	);
@@ -375,7 +375,7 @@ function main() {
 		const clearCacheArgv = [
 			nodeBin,
 			"-e",
-			"require('node:fs').rmSync('.antiscale',{recursive:true,force:true})",
+			"require('node:fs').rmSync('.link',{recursive:true,force:true})",
 		];
 
 		// Warm scenarios run before the cold one so a primed cache is never
@@ -384,7 +384,7 @@ function main() {
 		const scenarios = [
 			{
 				name: "startup",
-				label: "CLI startup — `antiscaler --help`",
+				label: "CLI startup — `link --help`",
 				argv: [nodeBin, cliPath, "--help"],
 				cwd: repoRoot,
 				runs: runCounts.startup,

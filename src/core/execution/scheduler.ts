@@ -6,7 +6,7 @@
  */
 
 import type {
-	ResolvedAntiscaleConfig,
+	ResolvedLinkConfig,
 	TaskConfig,
 	TaskGraph,
 } from "../../types/index.js";
@@ -120,7 +120,7 @@ export async function runScheduled(
  *   "auto" / absent — no ordering imposed
  */
 export function priorityFromConfig(
-	config: ResolvedAntiscaleConfig,
+	config: ResolvedLinkConfig,
 	tasks: Record<string, TaskConfig>,
 ): ((task: string) => number) | undefined {
 	const policy = config.scheduler?.policy;

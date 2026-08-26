@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-ctx-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "link-ctx-"));
 	tmpDirs.push(dir);
 	return dir;
 }
@@ -16,10 +16,7 @@ afterEach(() => {
 });
 
 function writeMinimalConfig(dir: string, config: object = {}): void {
-	writeFileSync(
-		path.join(dir, "antiscale.config.json"),
-		JSON.stringify(config),
-	);
+	writeFileSync(path.join(dir, "link.config.json"), JSON.stringify(config));
 }
 
 describe("createContext", () => {
@@ -201,7 +198,7 @@ describe("createContext (lintOnly / performance config)", () => {
 	it("enters lintOnly code path when lintOnlyForNonCritical is configured", async () => {
 		const dir = makeTmpDir();
 		// Write a trace session so loadTrace does not throw
-		const tracesDir = path.join(dir, ".antiscale", "traces");
+		const tracesDir = path.join(dir, ".link", "traces");
 		mkdirSync(tracesDir, { recursive: true });
 		writeFileSync(
 			path.join(tracesDir, "last.json"),

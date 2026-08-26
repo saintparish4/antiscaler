@@ -53,7 +53,7 @@ export function renderPrReplay(
 	if (result === null) {
 		lines(
 			printer,
-			"No trace session found. Run `antiscaler trace` first to record a session.",
+			"No trace session found. Run `link trace` first to record a session.",
 		);
 		return;
 	}

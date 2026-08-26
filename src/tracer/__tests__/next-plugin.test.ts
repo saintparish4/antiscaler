@@ -3,12 +3,12 @@ import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { antiscalerNextPlugin } from "../next-plugin.js";
+import { linkNextPlugin } from "../next-plugin.js";
 import type { TraceFile } from "../types.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-next-p-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "link-next-p-"));
 	tmpDirs.push(dir);
 	return dir;
 }
@@ -18,9 +18,7 @@ afterEach(() => {
 });
 
 // Derive the compiler type from the plugin without exporting internals.
-type PluginCompiler = Parameters<
-	ReturnType<typeof antiscalerNextPlugin>["apply"]
->[0];
+type PluginCompiler = Parameters<ReturnType<typeof linkNextPlugin>["apply"]>[0];
 
 function mockCompiler(context: string) {
 	const afterCompileHooks: Array<(compilation: unknown) => void> = [];
@@ -57,11 +55,11 @@ function mockCompiler(context: string) {
 	};
 }
 
-describe("antiscalerNextPlugin", () => {
+describe("linkNextPlugin", () => {
 	it("registers afterCompile and done hooks", () => {
 		const cwd = makeTmpDir();
 		const { compiler } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({ outDir: "traces" });
+		const plugin = linkNextPlugin({ outDir: "traces" });
 		plugin.apply(compiler);
 		// Hooks should have been tapped
 		expect(true).toBe(true); // no throw = taps registered
@@ -70,7 +68,7 @@ describe("antiscalerNextPlugin", () => {
 	it("collects modules from compilation, skipping node_modules", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({
+		const plugin = linkNextPlugin({
 			sessionId: "nx1",
 			outDir: "traces",
 		});
@@ -97,7 +95,7 @@ describe("antiscalerNextPlugin", () => {
 	it("writes sorted modules and framework='next'", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({
+		const plugin = linkNextPlugin({
 			sessionId: "nx2",
 			outDir: "traces",
 		});
@@ -117,7 +115,7 @@ describe("antiscalerNextPlugin", () => {
 	it("options.sessionId overrides generated id", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({
+		const plugin = linkNextPlugin({
 			sessionId: "custom-id",
 			outDir: "traces",
 		});
@@ -134,7 +132,7 @@ describe("antiscalerNextPlugin", () => {
 	it("multiple compilations accumulate modules (watch mode)", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({
+		const plugin = linkNextPlugin({
 			sessionId: "nx3",
 			outDir: "traces",
 		});
@@ -154,7 +152,7 @@ describe("antiscalerNextPlugin", () => {
 	it("deduplicates modules seen across compilations", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({
+		const plugin = linkNextPlugin({
 			sessionId: "nx4",
 			outDir: "traces",
 		});
@@ -174,7 +172,7 @@ describe("antiscalerNextPlugin", () => {
 	it("uses compiler.context as cwd for writeTrace", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({
+		const plugin = linkNextPlugin({
 			sessionId: "nx5",
 			outDir: "my-traces",
 		});
@@ -188,7 +186,7 @@ describe("antiscalerNextPlugin", () => {
 	it("derives routes from page file paths when no entrypoints provided", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({ sessionId: "nx6", outDir: "traces" });
+		const plugin = linkNextPlugin({ sessionId: "nx6", outDir: "traces" });
 		plugin.apply(compiler);
 
 		simulateCompilation([
@@ -214,7 +212,7 @@ describe("antiscalerNextPlugin", () => {
 	it("derives routes for app-router page.tsx files", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = antiscalerNextPlugin({ sessionId: "nx7", outDir: "traces" });
+		const plugin = linkNextPlugin({ sessionId: "nx7", outDir: "traces" });
 		plugin.apply(compiler);
 
 		simulateCompilation([

@@ -1,34 +1,31 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type {
-	AntiscaleConfig,
-	ResolvedAntiscaleConfig,
-} from "../../types/index.js";
+import type { LinkConfig, ResolvedLinkConfig } from "../../types/index.js";
 import { ConfigError } from "../errors.js";
-import { antiscaleConfigSchema } from "./schema.js";
+import { linkConfigSchema } from "./schema.js";
 
-export function defineConfig(config: AntiscaleConfig): AntiscaleConfig {
+export function defineConfig(config: LinkConfig): LinkConfig {
 	return config;
 }
 
 const CANDIDATES = [
-	"antiscale.config.ts",
-	"antiscale.config.mjs",
-	"antiscale.config.js",
+	"link.config.ts",
+	"link.config.mjs",
+	"link.config.js",
 	"buildflow.config.json",
-	"antiscale.config.json",
+	"link.config.json",
 ] as const;
 
 /** First matching config path under `cwd`, in the same order as `loadConfig` resolution. */
-export function findAntiscaleConfigPath(cwd: string): string | undefined {
+export function findLinkConfigPath(cwd: string): string | undefined {
 	return CANDIDATES.map((f) => path.join(cwd, f)).find(existsSync);
 }
 
 export async function loadConfig(
 	cwd: string = process.cwd(),
-): Promise<ResolvedAntiscaleConfig> {
-	const configPath = findAntiscaleConfigPath(cwd);
+): Promise<ResolvedLinkConfig> {
+	const configPath = findLinkConfigPath(cwd);
 
 	let raw: unknown = {};
 
@@ -45,7 +42,7 @@ export async function loadConfig(
 			}
 		} else {
 			// jiti transpiles TS and resolves ESM on the fly, so a .ts config
-			// needs no build step before antiscaler can read it.
+			// needs no build step before link can read it.
 			const { createJiti } = await import("jiti");
 			const jiti = createJiti(import.meta.url);
 			const mod = await jiti.import(configPath);
@@ -53,14 +50,14 @@ export async function loadConfig(
 		}
 	}
 
-	const result = antiscaleConfigSchema.safeParse(raw);
+	const result = linkConfigSchema.safeParse(raw);
 
 	if (!result.success) {
 		const messages = result.error.issues
 			.map((e) => ` ${e.path.map(String).join(".")}: ${e.message}`)
 			.join("\n");
-		throw new ConfigError(`Invalid antiscale config:\n${messages}`);
+		throw new ConfigError(`Invalid link config:\n${messages}`);
 	}
 
-	return result.data as ResolvedAntiscaleConfig;
+	return result.data as ResolvedLinkConfig;
 }

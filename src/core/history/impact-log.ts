@@ -1,8 +1,8 @@
 /**
  * @module
  * Shadow-mode prediction log (seed of roadmap 2.2 build history). Every
- * `antiscaler impact` run appends its prediction to
- * `.antiscale/history/impact.jsonl` so prediction-vs-reality can be measured
+ * `link impact` run appends its prediction to
+ * `.link/history/impact.jsonl` so prediction-vs-reality can be measured
  * before test skipping is ever enabled — the measured false-skip rate, not an
  * asserted number, is what earns the right to skip (roadmap 1.5 hard gate).
  *
@@ -35,7 +35,7 @@ export const MAX_IMPACT_RECORDS = 1000;
 const LOG_FILENAME = "impact.jsonl";
 
 export function defaultHistoryDir(cwd: string): string {
-	return path.join(cwd, ".antiscale", "history");
+	return path.join(cwd, ".link", "history");
 }
 
 /**

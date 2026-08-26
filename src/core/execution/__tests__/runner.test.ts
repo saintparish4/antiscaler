@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResolvedAntiscaleConfig } from "../../../types/index.js";
+import type { ResolvedLinkConfig } from "../../../types/index.js";
 import { hashTaskInputs } from "../../cache/hashing.js";
 import { readCache, writeCache } from "../../cache/store.js";
 import { TaskExecutionError } from "../../errors.js";
@@ -13,15 +13,15 @@ import type { TaskRunResult } from "../runner.js";
 import { runTasksWithDeps } from "../runner.js";
 
 function makeTempDir(): string {
-	return mkdtempSync(path.join(tmpdir(), "antiscale-runner-test-"));
+	return mkdtempSync(path.join(tmpdir(), "link-runner-test-"));
 }
 
 function makeConfig(
 	strategy: "adaptive" | "strict" = "adaptive",
-): ResolvedAntiscaleConfig {
+): ResolvedLinkConfig {
 	return {
 		strategy,
-		cache: { mode: "content", directory: ".antiscale/cache" },
+		cache: { mode: "content", directory: ".link/cache" },
 		tasks: {},
 	};
 }
@@ -47,7 +47,7 @@ describe("runTasksWithDeps", () => {
 
 	beforeEach(() => {
 		cwd = makeTempDir();
-		cacheDir = path.join(makeTempDir(), ".antiscale/cache");
+		cacheDir = path.join(makeTempDir(), ".link/cache");
 	});
 
 	// ── 1. Cache hit ─────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ describe("runTasksWithDeps", () => {
 			tasks: { build: { hash, lastRun: Date.now() } },
 		});
 
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: { build: { inputs: patterns } },
 		};
@@ -100,7 +100,7 @@ describe("runTasksWithDeps", () => {
 			tasks: { build: { hash: "stale-hash", lastRun: Date.now() } },
 		});
 
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: { build: { inputs: ["main.ts"] } },
 		};
@@ -137,7 +137,7 @@ describe("runTasksWithDeps", () => {
 				callOrder.push(`end:${name}`);
 			});
 
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: {
 				lint: {},
@@ -182,7 +182,7 @@ describe("runTasksWithDeps", () => {
 
 	// ── 4. Task failure ──────────────────────────────────────────────────────
 	it("propagates TaskExecutionError on task failure", async () => {
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: { build: {} },
 		};
@@ -220,7 +220,7 @@ describe("runTasksWithDeps", () => {
 			tasks: { build: { hash, lastRun: Date.now() } },
 		});
 
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("strict"),
 			tasks: { build: { inputs: patterns } },
 		};
@@ -249,7 +249,7 @@ describe("runTasksWithDeps", () => {
 	it("records lastRun/lastDurationMs in strict mode (no hash)", async () => {
 		mkdirSync(cacheDir, { recursive: true });
 
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("strict"),
 			tasks: { build: {} },
 		};
@@ -283,7 +283,7 @@ describe("runTasksWithDeps", () => {
 	it("persists cache to disk even when a task throws (Issue 11)", async () => {
 		writeFileSync(path.join(cwd, "ok.ts"), "export const ok = 1;");
 
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: {
 				ok: { inputs: ["ok.ts"] },
@@ -322,7 +322,7 @@ describe("runTasksWithDeps", () => {
 
 	// ── taskFilter: filtered tasks are recorded as skipped ──────────────────
 	it("marks tasks as skipped when taskFilter returns false", async () => {
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: { lint: {}, build: { dependsOn: ["lint"] } },
 		};
@@ -378,7 +378,7 @@ describe("runTasksWithDeps", () => {
 			},
 		});
 
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: { build: {} },
 		};
@@ -399,7 +399,7 @@ describe("runTasksWithDeps", () => {
 
 	// ── useScheduler path ────────────────────────────────────────────────────
 	it("runs tasks via event-driven scheduler when useScheduler is true", async () => {
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: { lint: {}, build: { dependsOn: ["lint"] } },
 		};
@@ -446,7 +446,7 @@ describe("runTasksWithDeps", () => {
 		// level has 5 items and exercises the limit < items.length branch
 		// of mapLimit. Without a real cap, peak would reach 5.
 		const leaves = ["a", "b", "c", "d", "e"];
-		const config: ResolvedAntiscaleConfig = {
+		const config: ResolvedLinkConfig = {
 			...makeConfig("adaptive"),
 			tasks: {
 				...Object.fromEntries(leaves.map((n) => [n, {}])),
@@ -490,7 +490,7 @@ describe("runTasksWithDeps", () => {
 			executor: TaskExecutor,
 		): Promise<TaskRunResult[]> {
 			writeFileSync(path.join(cwd, "main.ts"), "export const x = 1;");
-			const config: ResolvedAntiscaleConfig = {
+			const config: ResolvedLinkConfig = {
 				...makeConfig("adaptive"),
 				tasks: { build: { inputs: ["main.ts"] } },
 			};

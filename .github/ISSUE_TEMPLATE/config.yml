@@ -1,8 +1,8 @@
 blank_issues_enabled: false 
 contact_links:
   - name: Ask a question or discuss a topic 
-    url: https://github.com/saintparish4/antiscaler/discussions 
-    about: Ask questions or discuss with other Antiscaler users in discussions.
+    url: https://github.com/saintparish4/link/discussions 
+    about: Ask questions or discuss with other Link users in discussions.
   - name: Feature or documentation request 
-    url: https://github.com/saintparish4/antiscaler/discussions/new?category=ideas 
+    url: https://github.com/saintparish4/link/discussions/new?category=ideas 
     about: Open a feature or documentation request in discussions.

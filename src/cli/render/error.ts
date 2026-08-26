@@ -1,4 +1,4 @@
-import type { AntiscaleError } from "../../core/errors.js";
+import type { LinkError } from "../../core/errors.js";
 import { getColors } from "../visuals/color.js";
 
 /** A sink for text; `process.stderr.write` satisfies it. */
@@ -15,7 +15,7 @@ const writeStderr: WriteText = (text) => {
  * results, not the reason the process is about to exit non-zero.
  */
 export function renderError(
-	err: AntiscaleError,
+	err: LinkError,
 	write: WriteText = writeStderr,
 ): void {
 	const colors = getColors();

@@ -17,7 +17,7 @@ body:
     id: proposal
     attributes:
       label: Proposed solution
-      description: How would you want antiscaler to behave?
+      description: How would you want link to behave?
     validations:
       required: true
 

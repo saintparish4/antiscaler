@@ -11,7 +11,7 @@ import {
 const tmpDirs: string[] = [];
 
 const makeTmpDir = () => {
-	const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-pg-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "link-pg-"));
 	tmpDirs.push(dir);
 	return dir;
 };

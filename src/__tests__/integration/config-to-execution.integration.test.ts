@@ -22,8 +22,8 @@ import {
 function workspace(config: Record<string, unknown>): string {
 	const dir = createTempWorkspace("seam");
 	writeFiles(dir, {
-		"antiscale.config.json": JSON.stringify({
-			cache: { directory: ".antiscale/cache" },
+		"link.config.json": JSON.stringify({
+			cache: { directory: ".link/cache" },
 			...config,
 		}),
 	});
@@ -126,10 +126,10 @@ describe("context → runner", () => {
 				scripts: { build: "echo web" },
 				dependencies: { utils: "workspace:*" },
 			}),
-			"antiscale.config.json": JSON.stringify({
+			"link.config.json": JSON.stringify({
 				workspace: { enabled: true },
 				tasks: { build: { command: "echo root" } },
-				cache: { directory: path.join(dir, ".antiscale/cache") },
+				cache: { directory: path.join(dir, ".link/cache") },
 			}),
 		});
 

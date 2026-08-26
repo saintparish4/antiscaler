@@ -1,6 +1,6 @@
 # Getting started
 
-This guide takes you from zero to a working Antiscaler setup with a cache hit on the second run.
+This guide takes you from zero to a working Link setup with a cache hit on the second run.
 
 ## Prerequisites
 
@@ -10,24 +10,24 @@ This guide takes you from zero to a working Antiscaler setup with a cache hit on
 ## 1. Install
 
 ```bash
-npm install -D antiscaler
+npm install -D link
 ```
 
 ## 2. Create a config
 
-Run `init` to scaffold `antiscale.config.ts` interactively:
+Run `init` to scaffold `link.config.ts` interactively:
 
 ```bash
-npx antiscaler init
+npx link init
 ```
 
-Antiscaler detects your package manager, framework, and existing `package.json` scripts and suggests sensible defaults. Accept the prompts or type your own values.
+Link detects your package manager, framework, and existing `package.json` scripts and suggests sensible defaults. Accept the prompts or type your own values.
 
 The result is a file like this:
 
 ```typescript
-// antiscale.config.ts
-import { defineConfig } from "antiscaler";
+// link.config.ts
+import { defineConfig } from "link";
 
 export default defineConfig({
   strategy: "adaptive",
@@ -48,7 +48,7 @@ export default defineConfig({
 ## 3. Verify the setup
 
 ```bash
-npx antiscaler doctor
+npx link doctor
 ```
 
 Doctor checks Node version, validates your config against the schema, and warns if the cache is large or a required trace session is missing.
@@ -57,7 +57,7 @@ Example output:
 
 ```
 [✓] Node v22.4.0 meets requirement ≥20
-[✓] Config found: antiscale.config.ts
+[✓] Config found: link.config.ts
 [✓] Config is valid
 [✓] Cache directory is 0 MB
 ```
@@ -65,10 +65,10 @@ Example output:
 ## 4. First run
 
 ```bash
-npx antiscaler build
+npx link build
 ```
 
-Antiscaler builds the task graph (`test` depends on `build`), hashes the inputs for each task, finds no cached hashes, and runs both tasks. You should see output like:
+Link builds the task graph (`test` depends on `build`), hashes the inputs for each task, finds no cached hashes, and runs both tasks. You should see output like:
 
 ```
 TASK    DURATION   STATUS
@@ -82,7 +82,7 @@ test    12100ms    MISS
 Run the same command again without changing any source files:
 
 ```bash
-npx antiscaler build
+npx link build
 ```
 
 Both tasks hit the cache and are skipped:
@@ -97,7 +97,7 @@ test    -          HIT
 ## 6. Inspect history
 
 ```bash
-npx antiscaler insight
+npx link insight
 ```
 
 Shows each task's last run timestamp and duration from the local cache history. If the previous run included a remote cache, also prints the remote hit count and estimated time saved.

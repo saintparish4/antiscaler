@@ -81,8 +81,8 @@ describe("input (line mode, non-TTY)", () => {
 		const stdin = new PassThrough();
 		const output = fakeOutput();
 		const pending = input("Project name", { input: stdin, output });
-		stdin.write("antiscaler\n");
-		await expect(pending).resolves.toBe("antiscaler");
+		stdin.write("link\n");
+		await expect(pending).resolves.toBe("link");
 		expect(output.chunks.join("")).toContain("Project name");
 	});
 });

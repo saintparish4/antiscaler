@@ -2,8 +2,8 @@
  * @module
  * Vite plugin for module-level tracing.
  *
- *   import { antiscalerVitePlugin } from "antiscaler/tracer";
- *   export default { plugins: [antiscalerVitePlugin()] };
+ *   import { linkVitePlugin } from "link/tracer";
+ *   export default { plugins: [linkVitePlugin()] };
  */
 
 import type { TraceFile, TracerOptions } from "./types.js";
@@ -37,7 +37,7 @@ function fileToRoute(filePath: string, root: string): string | null {
 	return path;
 }
 
-export function antiscalerVitePlugin(options: TracerOptions = {}): VitePlugin {
+export function linkVitePlugin(options: TracerOptions = {}): VitePlugin {
 	const sessionId = options.sessionId ?? newSessionId();
 	const startedAt = Date.now();
 	const seen = new Set<string>();
@@ -45,7 +45,7 @@ export function antiscalerVitePlugin(options: TracerOptions = {}): VitePlugin {
 	let root = process.cwd();
 
 	return {
-		name: "antiscaler-tracer",
+		name: "link-tracer",
 		configResolved(cfg) {
 			root = cfg.root;
 		},

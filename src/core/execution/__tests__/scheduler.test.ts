@@ -193,7 +193,7 @@ describe("priorityFromConfig", () => {
 	) {
 		return {
 			strategy: "adaptive" as const,
-			cache: { mode: "content" as const, directory: ".antiscale/cache" },
+			cache: { mode: "content" as const, directory: ".link/cache" },
 			tasks,
 			...(policy !== undefined ? { scheduler: { policy } } : {}),
 		};

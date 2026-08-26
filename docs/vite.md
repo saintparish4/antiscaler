@@ -1,11 +1,11 @@
 # Vite setup
 
-Antiscaler provides a Vite plugin that records which modules and routes are loaded during builds and dev runs — the same trace data used by `antiscaler trace analyze` and the lint-only fast path.
+Link provides a Vite plugin that records which modules and routes are loaded during builds and dev runs — the same trace data used by `link trace analyze` and the lint-only fast path.
 
 ## 1. Install
 
 ```bash
-npm install -D antiscaler
+npm install -D link
 ```
 
 ## 2. Add the Vite plugin
@@ -13,35 +13,35 @@ npm install -D antiscaler
 ```javascript
 // vite.config.js (or vite.config.ts)
 import { defineConfig } from "vite";
-import { antiscalerVitePlugin } from "antiscaler/tracer";
+import { linkVitePlugin } from "link/tracer";
 
 export default defineConfig({
   plugins: [
-    antiscalerVitePlugin(),
+    linkVitePlugin(),
   ],
 });
 ```
 
-The plugin hooks into `generateBundle` to record entry chunks and their associated routes, writing sessions to `.antiscale/traces/<sessionId>.json`.
+The plugin hooks into `generateBundle` to record entry chunks and their associated routes, writing sessions to `.link/traces/<sessionId>.json`.
 
 ## 3. Record a trace session
 
 ```bash
-npx antiscaler trace
+npx link trace
 ```
 
 Starts your Vite dev server with tracing active. Navigate through the routes you want to mark as critical, then stop the server.
 
 ```bash
 # Inspect the most recent session
-npx antiscaler trace analyze
+npx link trace analyze
 ```
 
 ## 4. Minimal config
 
 ```typescript
-// antiscale.config.ts
-import { defineConfig } from "antiscaler";
+// link.config.ts
+import { defineConfig } from "link";
 
 export default defineConfig({
   tasks: {
@@ -77,4 +77,4 @@ See [nextjs.md](./nextjs.md) for a detailed walkthrough of this feature; the beh
 ## Notes
 
 - Vite route detection maps entry file paths to URLs using a `pages/`, `routes/`, or `views/` directory convention (with an optional `src/` prefix). Entry files outside these directories are recorded in the module list but are not assigned a route.
-- Add `.antiscale/` to `.gitignore` to avoid committing trace sessions.
+- Add `.link/` to `.gitignore` to avoid committing trace sessions.

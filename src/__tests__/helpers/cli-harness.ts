@@ -65,7 +65,7 @@ export function restoreGlobalPrinter(): void {
 const workspaces: string[] = [];
 
 export function createTempWorkspace(prefix: string): string {
-	const dir = mkdtempSync(path.join(tmpdir(), `antiscaler-${prefix}-`));
+	const dir = mkdtempSync(path.join(tmpdir(), `link-${prefix}-`));
 	workspaces.push(dir);
 	return dir;
 }

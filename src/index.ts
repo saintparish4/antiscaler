@@ -1,11 +1,11 @@
 /**
- * The supported public API surface of antiscaler.
+ * The supported public API surface of link.
  *
  * Everything re-exported from this module is covered by the project's semver
  * stability guarantee as of v1.0.0: no breaking changes in a minor or patch
- * release. Symbols reachable through deep import paths (`antiscaler/dist/...`)
+ * release. Symbols reachable through deep import paths (`link/dist/...`)
  * are `@internal` and may change at any time — depend only on what is exported
- * here and from `antiscaler/tracer`.
+ * here and from `link/tracer`.
  *
  * @packageDocumentation
  */
@@ -16,7 +16,7 @@
  *
  * @example
  * ```typescript
- * import { defineConfig } from "antiscaler";
+ * import { defineConfig } from "link";
  *
  * export default defineConfig({
  *   tasks: {
@@ -30,19 +30,19 @@
 export { defineConfig } from "./core/config/loader.js";
 /**
  * The raw config shape accepted by `defineConfig`. All fields are optional;
- * Antiscaler applies defaults for anything not specified.
+ * Link applies defaults for anything not specified.
  *
  * @public
  */
 /**
- * The `cache` sub-object of `ResolvedAntiscaleConfig`, with all defaults
+ * The `cache` sub-object of `ResolvedLinkConfig`, with all defaults
  * applied.
  *
  * @public
  */
 /**
  * The fully-validated config with every default filled in. This is the type
- * of the config object that Antiscaler uses internally after loading.
+ * of the config object that Link uses internally after loading.
  *
  * @public
  */
@@ -52,7 +52,7 @@ export { defineConfig } from "./core/config/loader.js";
  * @public
  */
 /**
- * A single task entry inside `AntiscaleConfig["tasks"]`.
+ * A single task entry inside `LinkConfig["tasks"]`.
  *
  * @example
  * ```typescript
@@ -66,9 +66,9 @@ export { defineConfig } from "./core/config/loader.js";
  * @public
  */
 export type {
-	AntiscaleConfig,
 	CacheConfig,
-	ResolvedAntiscaleConfig,
+	LinkConfig,
+	ResolvedLinkConfig,
 	Strategy,
 	TaskConfig,
 } from "./types/index.js";

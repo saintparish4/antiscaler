@@ -1,22 +1,22 @@
 import type * as z from "zod";
 import type { RemoteCacheAdapter } from "../core/cache/remote-adapter.js";
 import type {
-	antiscaleConfigSchema,
+	linkConfigSchema,
 	taskConfigSchema,
 } from "../core/config/schema.js";
 import type { PluginRegistry } from "../core/plugins/registry.js";
 
 /** The object a user passes to `defineConfig`: every field optional. */
-export type AntiscaleConfig = z.input<typeof antiscaleConfigSchema>;
+export type LinkConfig = z.input<typeof linkConfigSchema>;
 
 /** The same config after validation, with every default filled in. */
-export type ResolvedAntiscaleConfig = z.output<typeof antiscaleConfigSchema>;
+export type ResolvedLinkConfig = z.output<typeof linkConfigSchema>;
 
-export type Strategy = ResolvedAntiscaleConfig["strategy"];
+export type Strategy = ResolvedLinkConfig["strategy"];
 
 export type TaskConfig = z.infer<typeof taskConfigSchema>;
 
-export type CacheConfig = ResolvedAntiscaleConfig["cache"];
+export type CacheConfig = ResolvedLinkConfig["cache"];
 
 /** Implemented by `core/graph`; consumers depend on this, not the class. */
 export interface TaskGraph {
@@ -32,9 +32,9 @@ export interface RuntimeInfo {
 	fallback: string;
 }
 
-export interface AntiscaleContext {
+export interface LinkContext {
 	cwd: string;
-	config: ResolvedAntiscaleConfig;
+	config: ResolvedLinkConfig;
 	pm: string;
 	runtime: RuntimeInfo;
 	framework: string | null;

@@ -12,7 +12,7 @@ import {
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-history-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "link-history-"));
 	tmpDirs.push(dir);
 	return dir;
 }

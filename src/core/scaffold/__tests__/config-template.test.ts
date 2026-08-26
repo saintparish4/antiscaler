@@ -42,12 +42,12 @@ describe("inputsFor", () => {
 });
 
 describe("renderConfigTemplate", () => {
-	it("emits a defineConfig module importing from antiscaler", () => {
+	it("emits a defineConfig module importing from link", () => {
 		const template = renderConfigTemplate([
 			{ name: "build", command: "pnpm build", inputs: ["src/**/*"] },
 		]);
 
-		expect(template).toContain('import { defineConfig } from "antiscaler";');
+		expect(template).toContain('import { defineConfig } from "link";');
 		expect(template).toContain("export default defineConfig({");
 		expect(template).toContain('strategy: "adaptive"');
 	});

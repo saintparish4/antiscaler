@@ -1,48 +1,48 @@
 # Next.js setup
 
-Antiscaler provides a webpack plugin for Next.js that records which modules and routes are loaded during builds and dev runs. This data powers two features:
+Link provides a webpack plugin for Next.js that records which modules and routes are loaded during builds and dev runs. This data powers two features:
 
-- **`antiscaler trace analyze`** — inspect which files and routes a trace session loaded
+- **`link trace analyze`** — inspect which files and routes a trace session loaded
 - **Lint-only fast path** — skip builds entirely when a PR touches no critical route
 
 ## 1. Install the tracer plugin
 
 ```bash
-npm install -D antiscaler
+npm install -D link
 ```
 
 ## 2. Add the webpack plugin
 
 ```javascript
 // next.config.js (or next.config.mjs)
-import { antiscalerNextPlugin } from "antiscaler/tracer";
+import { linkNextPlugin } from "link/tracer";
 
 export default {
   webpack(config, { isServer }) {
     if (!isServer) {
-      config.plugins.push(antiscalerNextPlugin());
+      config.plugins.push(linkNextPlugin());
     }
     return config;
   },
 };
 ```
 
-The plugin writes trace sessions to `.antiscale/traces/<sessionId>.json` during every build or `next dev` run.
+The plugin writes trace sessions to `.link/traces/<sessionId>.json` during every build or `next dev` run.
 
 ## 3. Record a trace session
 
 ```bash
-npx antiscaler trace
+npx link trace
 ```
 
 This starts `next dev` (or your configured dev command) with tracing active. Browse your app or hit any routes you consider critical. Stop the server with Ctrl-C.
 
 ```bash
 # Inspect the most recent session
-npx antiscaler trace analyze
+npx link trace analyze
 
 # Inspect a specific session
-npx antiscaler trace analyze <sessionId>
+npx link trace analyze <sessionId>
 ```
 
 `trace analyze` prints:
@@ -69,11 +69,11 @@ Packages touched (3):
 
 ## 4. Enable the lint-only fast path
 
-When `lintOnlyForNonCritical` is on, Antiscaler checks whether any changed file intersects the modules recorded for your declared critical routes. If no critical route is touched, Antiscaler restricts the run to lint tasks only and skips all builds.
+When `lintOnlyForNonCritical` is on, Link checks whether any changed file intersects the modules recorded for your declared critical routes. If no critical route is touched, Link restricts the run to lint tasks only and skips all builds.
 
 ```typescript
-// antiscale.config.ts
-import { defineConfig } from "antiscaler";
+// link.config.ts
+import { defineConfig } from "link";
 
 export default defineConfig({
   tasks: {
@@ -96,7 +96,7 @@ export default defineConfig({
 When a PR only touches, say, the `/about` page (stderr notice + table):
 
 ```
-[antiscaler] No critical-path changes detected — running lint tasks only
+[link] No critical-path changes detected — running lint tasks only
 
 TASK    DURATION   STATUS
 ---------------------------
@@ -118,10 +118,10 @@ lint    8200ms     MISS
 `--scope` switches to the event-driven scheduler and gives traced packages the highest priority, so they are scheduled before any non-traced packages. All packages still run; the flag controls order, not which tasks execute.
 
 ```bash
-npx antiscaler build --scope <sessionId>
+npx link build --scope <sessionId>
 
 # Shorthand for the most recent session
-npx antiscaler build --trace last
+npx link build --trace last
 ```
 
 ## Config reference

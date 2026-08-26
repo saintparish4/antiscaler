@@ -4,7 +4,7 @@ import os from "node:os";
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 
 import type {
-	ResolvedAntiscaleConfig,
+	ResolvedLinkConfig,
 	TaskConfig,
 	TaskGraph,
 } from "../../types/index.js";
@@ -27,7 +27,7 @@ export interface RunOptions {
 	cwd: string;
 	cacheDir: string;
 	pm: string;
-	config: ResolvedAntiscaleConfig;
+	config: ResolvedLinkConfig;
 	tasks: Record<string, TaskConfig>;
 	concurrency?: number;
 	/** When true, use event-driven scheduling instead of level-based waves. */

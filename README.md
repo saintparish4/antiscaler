@@ -1,11 +1,11 @@
-# Antiscaler
+# Link
 
-[![npm version](https://img.shields.io/npm/v/antiscaler.svg)](https://www.npmjs.com/package/antiscaler)
-[![CI](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/antiscaler/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/link.svg)](https://www.npmjs.com/package/link)
+[![CI](https://github.com/saintparish4/link/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/link/actions/workflows/ci.yml)
 
-A build orchestrator that skips work you haven't changed — a task DAG, content-based caching, and workspace scoping, driven by `antiscale.config.ts`.
+A build orchestrator that skips work you haven't changed — a task DAG, content-based caching, and workspace scoping, driven by `link.config.ts`.
 
-This README is for working **on** Antiscaler. Using it in your own project is documented in [docs/](./docs/getting-started.md).
+This README is for working **on** Link. Using it in your own project is documented in [docs/](./docs/getting-started.md).
 
 ---
 
@@ -27,8 +27,8 @@ Optional, only if you touch the matching area:
 ## Installation
 
 ```bash
-git clone https://github.com/saintparish4/antiscaler.git
-cd antiscaler
+git clone https://github.com/saintparish4/link.git
+cd link
 pnpm install
 pnpm build               # required before the CLI or E2E tests can run
 node dist/cli.js --help  # smoke test
@@ -53,7 +53,7 @@ The default branch is `alpha`, and it is expected to be lint-clean — if `pnpm 
 
 There is no watch build. The loop is `pnpm build && node dist/cli.js <command>`, run against a scratch project or one of the fixture workspaces in `src/__tests__/fixtures/`.
 
-`src/cli/index.ts` registers every command with a dynamic `import()` inside its `action()` callback, deferring execa, jiti, and fast-glob until a command actually runs. That is what keeps `antiscaler --help` fast, and it is the one sanctioned exception to the project's prefer-top-level-imports rule — the benchmark job fails if startup regresses past 200 ms.
+`src/cli/index.ts` registers every command with a dynamic `import()` inside its `action()` callback, deferring execa, jiti, and fast-glob until a command actually runs. That is what keeps `link --help` fast, and it is the one sanctioned exception to the project's prefer-top-level-imports rule — the benchmark job fails if startup regresses past 200 ms.
 
 Benchmark methodology and how to reproduce the published numbers: [benchmarks/README.md](./benchmarks/README.md).
 
@@ -84,7 +84,7 @@ Unit tests never shell out — `runTasksWithDeps` takes a `TaskExecutor`, so tes
 
 ## Environment Variables
 
-Antiscaler takes no configuration from the environment — that lives in `antiscale.config.ts`. What it reads are standard terminal and CI signals:
+Link takes no configuration from the environment — that lives in `link.config.ts`. What it reads are standard terminal and CI signals:
 
 | Variable | Read by | Effect |
 |---|---|---|
@@ -93,8 +93,8 @@ Antiscaler takes no configuration from the environment — that lives in `antisc
 | `CLICOLOR_FORCE` | `visuals/color.ts` | Same as `FORCE_COLOR`. |
 | `CI` | `progress/reporter.ts`, `doctor.ts` | Suppresses color and animated progress. |
 | `JPY_SESSION_NAME` | `visuals/progress.ts` | Detects a Jupyter session and falls back to line-based output. |
-| `ANTISCALE_TEST_NO_CLI_PROGRESS` | `visuals/printer.ts`, `visuals/progress.ts` | Test-only. Suppresses progress bars so concurrent output stays assertable. |
-| `ANTISCALER_TRACE` | Set by `antiscaler trace` | Exported to the spawned dev process. Nothing in Antiscaler reads it back — the tracer plugins are unconditional once installed. |
+| `LINK_TEST_NO_CLI_PROGRESS` | `visuals/printer.ts`, `visuals/progress.ts` | Test-only. Suppresses progress bars so concurrent output stays assertable. |
+| `LINK_TRACE` | Set by `link trace` | Exported to the spawned dev process. Nothing in Link reads it back — the tracer plugins are unconditional once installed. |
 
 Color precedence: `--color <when>` → `--no-color` → `NO_COLOR` → `FORCE_COLOR`/`CLICOLOR_FORCE` → TTY detection.
 
@@ -114,17 +114,17 @@ Layered, dependencies pointing one way: `cli → core → adapters`. Ports are o
 | `src/tracer/` | Webpack and Vite plugins that record module resolution |
 | `src/types/` | Contracts shared across layers |
 
-`tsup` builds three entry points: `dist/index.js` (library API), `dist/cli.js` (the `antiscaler` binary), and `dist/tracer.js` (framework plugins).
+`tsup` builds three entry points: `dist/index.js` (library API), `dist/cli.js` (the `link` binary), and `dist/tracer.js` (framework plugins).
 
-The request path for most commands: `cli/context.ts:createContext()` loads config, detects PM/runtime/framework, builds the task DAG, and computes git-diff scoping — then `core/execution:runTasksWithDeps()` walks DAG levels while `core/cache` hashes inputs against `.antiscale/cache/cache.json`.
+The request path for most commands: `cli/context.ts:createContext()` loads config, detects PM/runtime/framework, builds the task DAG, and computes git-diff scoping — then `core/execution:runTasksWithDeps()` walks DAG levels while `core/cache` hashes inputs against `.link/cache/cache.json`.
 
-Two rules to know before your first PR: business logic does not live in command handlers, and `core` never prints or exits — it throws `AntiscaleError` subclasses and lets the CLI top level map them to exit codes (`AntiscaleError` → 1, unexpected → 2). Full detail in [CLAUDE.md](./CLAUDE.md).
+Two rules to know before your first PR: business logic does not live in command handlers, and `core` never prints or exits — it throws `LinkError` subclasses and lets the CLI top level map them to exit codes (`LinkError` → 1, unexpected → 2). Full detail in [CLAUDE.md](./CLAUDE.md).
 
 ---
 
 ## Deployment
 
-Antiscaler ships as an npm package; there is no server to deploy.
+Link ships as an npm package; there is no server to deploy.
 
 ```bash
 pnpm publish            # prepublishOnly runs `pnpm test:all && pnpm build`
@@ -134,7 +134,7 @@ Only `dist/` is published (`files: ["dist"]`). The package exposes `.` and `./tr
 
 Releases are currently **manual** — `.github/workflows/release.yml` has been removed, and `deploy.yml` and `security.yml` are empty placeholders. Before publishing: bump the version, update [CHANGELOG.md](./CHANGELOG.md), and confirm CI is green on `alpha`.
 
-Everything exported from `antiscaler` and `antiscaler/tracer` follows [semantic versioning](https://semver.org), so a breaking change to either surface cannot ship in a minor or patch release.
+Everything exported from `link` and `link/tracer` follows [semantic versioning](https://semver.org), so a breaking change to either surface cannot ship in a minor or patch release.
 
 ---
 

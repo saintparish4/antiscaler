@@ -1,7 +1,7 @@
-import type { ResolvedAntiscaleConfig } from "../../types/index.js";
+import type { ResolvedLinkConfig } from "../../types/index.js";
 import { TaskGraph } from "./dag.js";
 
-export function buildGraph(config: ResolvedAntiscaleConfig): TaskGraph {
+export function buildGraph(config: ResolvedLinkConfig): TaskGraph {
 	const graph = new TaskGraph();
 	for (const [name, task] of Object.entries(config.tasks)) {
 		graph.addTask(name);

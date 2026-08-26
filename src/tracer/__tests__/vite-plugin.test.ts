@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { TraceFile } from "../types.js";
-import { antiscalerVitePlugin } from "../vite-plugin.js";
+import { linkVitePlugin } from "../vite-plugin.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-vite-p-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "link-vite-p-"));
 	tmpDirs.push(dir);
 	return dir;
 }
@@ -17,21 +17,21 @@ afterEach(() => {
 	tmpDirs.length = 0;
 });
 
-describe("antiscalerVitePlugin", () => {
-	it("has name 'antiscaler-tracer'", () => {
-		const plugin = antiscalerVitePlugin();
-		expect(plugin.name).toBe("antiscaler-tracer");
+describe("linkVitePlugin", () => {
+	it("has name 'link-tracer'", () => {
+		const plugin = linkVitePlugin();
+		expect(plugin.name).toBe("link-tracer");
 	});
 
 	it("transform returns null (does not modify code)", () => {
-		const plugin = antiscalerVitePlugin();
+		const plugin = linkVitePlugin();
 		const result = plugin.transform?.("const x = 1;", "/app/src/main.ts");
 		expect(result).toBeNull();
 	});
 
 	it("transform collects non-node_modules ids", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s1", outDir: "traces" });
+		const plugin = linkVitePlugin({ sessionId: "s1", outDir: "traces" });
 		plugin.configResolved?.({ root: cwd });
 		plugin.transform?.("", "/app/src/a.ts");
 		plugin.transform?.("", "/app/src/b.ts");
@@ -52,7 +52,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("transform strips query parameters from ids", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s2", outDir: "traces" });
+		const plugin = linkVitePlugin({ sessionId: "s2", outDir: "traces" });
 		plugin.configResolved?.({ root: cwd });
 		plugin.transform?.("", "/app/src/comp.vue?vue&type=script");
 		return plugin.closeBundle?.().then(async () => {
@@ -67,7 +67,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("configResolved updates root used by closeBundle", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s3", outDir: "out" });
+		const plugin = linkVitePlugin({ sessionId: "s3", outDir: "out" });
 		plugin.configResolved?.({ root: cwd });
 		plugin.transform?.("", "/x.ts");
 		return plugin.closeBundle?.().then(() => {
@@ -77,7 +77,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("closeBundle writes sorted modules and correct metadata", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s4", outDir: "traces" });
+		const plugin = linkVitePlugin({ sessionId: "s4", outDir: "traces" });
 		plugin.configResolved?.({ root: cwd });
 		plugin.transform?.("", "/z.ts");
 		plugin.transform?.("", "/a.ts");
@@ -95,7 +95,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("options.sessionId overrides generated id", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({
+		const plugin = linkVitePlugin({
 			sessionId: "my-id",
 			outDir: "traces",
 		});
@@ -110,7 +110,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("deduplicates the same module id seen multiple times", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s5", outDir: "traces" });
+		const plugin = linkVitePlugin({ sessionId: "s5", outDir: "traces" });
 		plugin.configResolved?.({ root: cwd });
 		plugin.transform?.("", "/app/same.ts");
 		plugin.transform?.("", "/app/same.ts");
@@ -125,7 +125,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("generateBundle populates routes from entry chunks", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s6", outDir: "traces" });
+		const plugin = linkVitePlugin({ sessionId: "s6", outDir: "traces" });
 		plugin.configResolved?.({ root: cwd });
 
 		plugin.generateBundle?.(undefined, {
@@ -172,7 +172,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("generateBundle skips non-entry chunks and asset chunks", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s7", outDir: "traces" });
+		const plugin = linkVitePlugin({ sessionId: "s7", outDir: "traces" });
 		plugin.configResolved?.({ root: cwd });
 
 		plugin.generateBundle?.(undefined, {
@@ -197,7 +197,7 @@ describe("antiscalerVitePlugin", () => {
 
 	it("generateBundle ignores entry chunks with no matching route convention", () => {
 		const cwd = makeTmpDir();
-		const plugin = antiscalerVitePlugin({ sessionId: "s8", outDir: "traces" });
+		const plugin = linkVitePlugin({ sessionId: "s8", outDir: "traces" });
 		plugin.configResolved?.({ root: cwd });
 
 		// facadeModuleId is under src/ but NOT under pages/routes/views

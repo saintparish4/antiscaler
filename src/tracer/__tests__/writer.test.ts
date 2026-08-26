@@ -7,7 +7,7 @@ import { newSessionId, writeTrace } from "../writer.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-tracer-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "link-tracer-"));
 	tmpDirs.push(dir);
 	return dir;
 }
@@ -40,10 +40,10 @@ describe("writeTrace", () => {
 		expect(parsed.modules).toHaveLength(1);
 	});
 
-	it("uses default outDir (.antiscale/traces) when none provided", async () => {
+	it("uses default outDir (.link/traces) when none provided", async () => {
 		const cwd = makeTmpDir();
 		const result = await writeTrace(cwd, makeTrace());
-		expect(result).toContain(".antiscale");
+		expect(result).toContain(".link");
 		expect(result).toContain("traces");
 	});
 

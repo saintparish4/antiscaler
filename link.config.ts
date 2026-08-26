@@ -1,7 +1,7 @@
 import { defineConfig } from "./src/index.js";
 
-// Antiscaler dogfooding itself. Run `node dist/cli.js build` (or once
-// published, `npx antiscaler build`) to typecheck + test + bundle in one DAG.
+// Link dogfooding itself. Run `node dist/cli.js build` (or once
+// published, `npx link build`) to typecheck + test + bundle in one DAG.
 //
 // The graph is:
 //   build  →  typecheck
@@ -11,7 +11,7 @@ import { defineConfig } from "./src/index.js";
 //
 // `echoQuoted` (Phase 9 exit gate): quoted-arg parsing smoke —
 //   node dist/cli.js run echoQuoted
-// Expected stdout line: antiscaler ok
+// Expected stdout line: link ok
 // TODO: remove the `echoQuoted` task before the 0.2.0 release — keep this file
 // to real pipeline tasks only; executor tests already cover quoted argv.
 //
@@ -28,9 +28,9 @@ export default defineConfig({
 	strategy: "adaptive",
 	tasks: {
 		echoQuoted: {
-			command: `node -e "console.log('antiscaler ok')"`,
+			command: `node -e "console.log('link ok')"`,
 			// Content cache: second `run echoQuoted` with unchanged config → HIT.
-			inputs: ["antiscale.config.ts"],
+			inputs: ["link.config.ts"],
 		},
 		typecheck: {
 			command: "npm run typecheck",

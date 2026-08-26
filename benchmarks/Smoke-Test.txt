@@ -1,7 +1,7 @@
-=== Antiscale 0.1.0 Smoke Test ===
+=== Link 0.1.0 Smoke Test ===
 Date: 2026-04-19T21:46:58.9651624-04:00
-CLI:  C:\Users\shari\OrdinalScale\antiscaler\dist\index.js
-Dir:  C:\Users\shari\AppData\Local\Temp\antiscale-smoke-1176266683
+CLI:  C:\Users\shari\OrdinalScale\link\dist\index.js
+Dir:  C:\Users\shari\AppData\Local\Temp\link-smoke-1176266683
 
 --- Config file ---
 export default {
@@ -31,17 +31,17 @@ build -          HIT
 
 Total: 0ms  Cache hit rate: 100%
 
---- [3] antiscale insight ---
+--- [3] link insight ---
 
 Cached task history:
   build                last run: 4/19/2026, 9:47:01 PM  duration: 78ms
 
---- [4] antiscale env ---
+--- [4] link env ---
 Package Manager : npm
 Runtime         : node (fallback: node)
 Framework       : none detected
 
---- [5] antiscale check ---
+--- [5] link check ---
 Config and graph are valid.
 
 === Smoke test complete ===

@@ -1,9 +1,9 @@
 # Config reference
 
-All configuration lives in `antiscale.config.ts` (or `.js` / `.mjs` / `.json`) at your project root. The config is loaded via [jiti](https://github.com/unjs/jiti), so TypeScript is supported without a build step. The JSON format (`antiscale.config.json`) is also accepted for environments where TypeScript is unavailable.
+All configuration lives in `link.config.ts` (or `.js` / `.mjs` / `.json`) at your project root. The config is loaded via [jiti](https://github.com/unjs/jiti), so TypeScript is supported without a build step. The JSON format (`link.config.json`) is also accepted for environments where TypeScript is unavailable.
 
 ```typescript
-import { defineConfig } from "antiscaler";
+import { defineConfig } from "link";
 
 export default defineConfig({ ... });
 ```
@@ -44,13 +44,13 @@ Only content-based hashing is supported. This field exists for forward compatibi
 | | |
 |-|-|
 | Type | `string` |
-| Default | `".antiscale/cache"` |
+| Default | `".link/cache"` |
 
 Directory where local cache entries are stored. Relative to the project root.
 
 ```typescript
 cache: {
-  directory: ".antiscale/cache",
+  directory: ".link/cache",
 },
 ```
 
@@ -76,7 +76,7 @@ cache: {
 | Type | `number` |
 | Default | `undefined` |
 
-Expected duration of a cache miss in milliseconds. When set, `antiscaler insight` uses this value to calculate "estimated time saved" from remote cache hits instead of using the raw last-run duration.
+Expected duration of a cache miss in milliseconds. When set, `link insight` uses this value to calculate "estimated time saved" from remote cache hits instead of using the raw last-run duration.
 
 ### `cache.remote`
 
@@ -109,7 +109,7 @@ Remote cache backend. See [remote-cache.md](./remote-cache.md) for full setup in
 |-----|------|---------|-------------|
 | `bucket` | `string` | — | S3 bucket name |
 | `region` | `string` | — | AWS region |
-| `prefix` | `string` | `"antiscaler/"` | Key prefix for all objects |
+| `prefix` | `string` | `"link/"` | Key prefix for all objects |
 | `endpoint` | `string` | — | Custom endpoint for R2 / MinIO / localstack |
 
 ---
@@ -175,7 +175,7 @@ Hint to the `pack-heavy` scheduler policy that this task should be scheduled bef
 | Type | `boolean` |
 | Default | `false` |
 
-Enable workspace / PackageGraph discovery. When `true`, Antiscaler discovers all workspace packages and auto-generates `<package-name>:<script>` tasks for each script in `workspace.scripts`.
+Enable workspace / PackageGraph discovery. When `true`, Link discovers all workspace packages and auto-generates `<package-name>:<script>` tasks for each script in `workspace.scripts`.
 
 ### `workspace.scripts`
 
@@ -255,7 +255,7 @@ Controls how the event-driven scheduler orders task execution within a DAG level
 | Type | `boolean` |
 | Default | `false` |
 
-When `true`, Antiscaler loads the last trace session, diffs changed files against `performance.criticalPaths`, and restricts execution to lint-named tasks when no critical route is touched. Requires at least one recorded trace session.
+When `true`, Link loads the last trace session, diffs changed files against `performance.criticalPaths`, and restricts execution to lint-named tasks when no critical route is touched. Requires at least one recorded trace session.
 
 ### `performance.criticalPaths`
 
@@ -278,13 +278,13 @@ performance: {
 ## Full example
 
 ```typescript
-import { defineConfig } from "antiscaler";
+import { defineConfig } from "link";
 
 export default defineConfig({
   strategy: "adaptive",
 
   cache: {
-    directory: ".antiscale/cache",
+    directory: ".link/cache",
     ttlDays: 14,
     costPerMissMs: 45000,
     remote: {

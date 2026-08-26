@@ -25,7 +25,7 @@ function fakeStream(isTTY: boolean): {
 
 beforeEach(() => {
 	writeGlobalColorChoice("never");
-	vi.stubEnv("ANTISCALE_TEST_NO_CLI_PROGRESS", "");
+	vi.stubEnv("LINK_TEST_NO_CLI_PROGRESS", "");
 });
 
 afterEach(() => {

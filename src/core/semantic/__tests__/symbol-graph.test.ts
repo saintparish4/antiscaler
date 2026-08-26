@@ -21,7 +21,7 @@ import {
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "antiscaler-symgraph-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "link-symgraph-"));
 	tmpDirs.push(dir);
 	return dir;
 }

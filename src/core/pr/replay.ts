@@ -1,6 +1,6 @@
 /**
  * @module
- * `antiscaler pr replay` — intersect the files a PR changes with a recorded
+ * `link pr replay` — intersect the files a PR changes with a recorded
  * trace session, answering "which routes did this branch actually touch?".
  */
 

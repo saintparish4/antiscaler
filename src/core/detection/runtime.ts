@@ -24,7 +24,7 @@ export function detectRuntime(): RuntimeAdapter {
 }
 
 /**
- * Builds a RuntimeInfo value for AntiscaleContext from an adapter
+ * Builds a RuntimeInfo value for LinkContext from an adapter
  * primary: the detected runtime name
  * fallback: always "node" (guaranteed to be available in most environments)
  */

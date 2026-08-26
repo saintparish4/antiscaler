@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
-$cli = "C:\Users\shari\OrdinalScale\antiscaler\dist\index.js"
-$outFile = "C:\Users\shari\OrdinalScale\antiscaler\benchmarks\Smoke-Test.txt"
-$testDir = Join-Path $env:TEMP "antiscale-smoke-$(Get-Random)"
+$cli = "C:\Users\shari\OrdinalScale\link\dist\index.js"
+$outFile = "C:\Users\shari\OrdinalScale\link\benchmarks\Smoke-Test.txt"
+$testDir = Join-Path $env:TEMP "link-smoke-$(Get-Random)"
 
 function Log {
   param([string]$msg)
@@ -9,7 +9,7 @@ function Log {
   Write-Host $msg
 }
 
-Set-Content -Path $outFile -Value "=== Antiscale 0.1.0 Smoke Test ==="
+Set-Content -Path $outFile -Value "=== Link 0.1.0 Smoke Test ==="
 Log "Date: $(Get-Date -Format o)"
 Log "CLI:  $cli"
 Log "Dir:  $testDir"
@@ -33,10 +33,10 @@ export default {
   },
 };
 '@
-Set-Content -Path "antiscale.config.ts" -Value $configContent -Encoding ascii
+Set-Content -Path "link.config.ts" -Value $configContent -Encoding ascii
 
 Log "--- Config file ---"
-Log (Get-Content "antiscale.config.ts" -Raw)
+Log (Get-Content "link.config.ts" -Raw)
 
 Log "--- [1] First build (expect MISS + node version) ---"
 $r1 = & node $cli build 2>&1 | Out-String
@@ -46,15 +46,15 @@ Log "--- [2] Second build (expect HIT, no node version printed) ---"
 $r2 = & node $cli build 2>&1 | Out-String
 Log $r2
 
-Log "--- [3] antiscale insight ---"
+Log "--- [3] link insight ---"
 $r3 = & node $cli insight 2>&1 | Out-String
 Log $r3
 
-Log "--- [4] antiscale env ---"
+Log "--- [4] link env ---"
 $r4 = & node $cli env 2>&1 | Out-String
 Log $r4
 
-Log "--- [5] antiscale check ---"
+Log "--- [5] link check ---"
 $r5 = & node $cli check 2>&1 | Out-String
 Log $r5
 

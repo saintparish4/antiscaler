@@ -1,11 +1,17 @@
 # Changelog
 
-All notable changes to antiscaler are documented in this file.
+All notable changes to link are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+
+- **Project rename** — package name, `bin` command, config filename
+  (`link.config.ts`), and cache directory (`.link/`) all now use the `link`
+  name throughout.
 
 ## [1.1.1] - 2026-07-19
 
@@ -29,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`SymbolGraph`** (`.antiscale/graph/symbols.json`) — a persisted, incrementally-updated
+- **`SymbolGraph`** (`.link/graph/symbols.json`) — a persisted, incrementally-updated
   index of every workspace file's imports and exported symbols (with signature/body
   hashes). A file is only re-parsed when its content hash changes, so repeat runs stay
   cheap on large repos.
@@ -45,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lowers the confidence score instead of silently passing it by.
 - **Test impact analysis** (`core/semantic/test-impact.ts`) — maps every test file to its
   static import closure and selects the tests whose closure intersects the blast radius.
-- **`antiscaler impact`** — predicts which tests a given change requires by running the
+- **`link impact`** — predicts which tests a given change requires by running the
   differ → blast-radius → test-impact pipeline end to end.
   - **This command is report-only.** It does not skip any tests today, and test
     skipping is intentionally not implemented yet — the CLI prints the run/skip
@@ -54,11 +60,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     safety number: it reflects how much of the change was structurally resolved versus
     left as a dynamic-import or unresolved-specifier edge. It is not (yet) backed by any
     measurement of actual prediction accuracy.
-  - Every run appends its prediction to `.antiscale/history/impact.jsonl`. This is
+  - Every run appends its prediction to `.link/history/impact.jsonl`. This is
     shadow-mode logging: the measured false-skip rate over that accumulated history —
     not the confidence score above — is what will eventually earn the right to enable
     real test skipping.
-- **`antiscaler workspace check`** — CI gate that compares each workspace package's
+- **`link workspace check`** — CI gate that compares each workspace package's
   actual imports (from the `SymbolGraph`) against its declared manifest dependencies.
   Flags undeclared workspace/external dependencies and relative imports that reach
   across a package boundary; exits 1 on any violation.
@@ -69,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`antiscaler diff <file>`** misclassified changes to files more than one directory
+- **`link diff <file>`** misclassified changes to files more than one directory
   deep as `breaking` on Windows. `path.relative` returns backslash-separated paths,
   which `git show <ref>:<path>` rejects as a pathspec (git pathspecs are always
   POSIX-separated internally); the failure was silently swallowed by the existing
@@ -112,7 +118,7 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 ### Changed
 
 - Documentation now steers users away from committing remote-cache secrets to
-  `antiscale.config.ts`, recommending environment variables / the AWS
+  `link.config.ts`, recommending environment variables / the AWS
   credential chain instead.
 
 ## [0.9.3] - 2026-06-09
@@ -143,8 +149,8 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 
 ### Added
 
-- **`antiscaler doctor`** — health-check command that validates Node version, locates and Zod-validates the config file, reports cache directory size with a warning threshold (500 MB), and checks for required trace sessions when `performance.criticalPaths` is configured.
-- **Interactive `init`** — `antiscaler init` now detects your package manager, framework, and existing `package.json` scripts, then walks through task configuration interactively (TTY). Falls back to a minimal non-interactive config in CI / piped contexts.
+- **`link doctor`** — health-check command that validates Node version, locates and Zod-validates the config file, reports cache directory size with a warning threshold (500 MB), and checks for required trace sessions when `performance.criticalPaths` is configured.
+- **Interactive `init`** — `link init` now detects your package manager, framework, and existing `package.json` scripts, then walks through task configuration interactively (TTY). Falls back to a minimal non-interactive config in CI / piped contexts.
 - **Progress output** — running tasks now print a live progress line so long builds don't appear frozen.
 - **`--dry-run` flag** — pass `--dry-run` to any execution command (`build`, `run`, `dev`) to print what would run without executing anything.
 
@@ -153,7 +159,7 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 ### Added
 
 - **Remote cache** (`cache.remote`): cache hits now survive across machines
-  (CI ↔ local, CI run A ↔ CI run B). Configure a backend in `antiscale.config.ts`:
+  (CI ↔ local, CI run A ↔ CI run B). Configure a backend in `link.config.ts`:
   - `type: "http"` — generic presigned-URL backend; works with S3, GCS, R2, or
     any server that accepts `GET`/`PUT`/`HEAD` on `{baseUrl}/{hash}`. Supports
     custom request headers (e.g. `Authorization`) and a configurable timeout.
@@ -162,7 +168,7 @@ semver stability guarantee: no breaking changes in minor or patch releases.
     Supports custom endpoint for R2/MinIO/localstack, explicit credentials, and
     a configurable key prefix.
 - **Remote-hit tracking**: `TaskRunResult` gains `remoteHit?: boolean`. The
-  `antiscaler insight` table now shows a footer line:
+  `link insight` table now shows a footer line:
   `Remote cache hits: N  Estimated time saved: Xms`.
 - **Cost modeling** (`cache.costPerMissMs`): configuration hook for annotating
   the expected cost of a cache miss; surfaced in the insight summary.
@@ -178,7 +184,7 @@ semver stability guarantee: no breaking changes in minor or patch releases.
   automatically included in the affected set. The `packageScopes` hash filter now
   covers the full cascade, so dependents are hashed against their own files rather
   than against an empty scope.
-- **`antiscaler build --affected`**: runs only the tasks belonging to packages in
+- **`link build --affected`**: runs only the tasks belonging to packages in
   the cascade-expanded affected set. Non-affected tasks are recorded as `SKIP` in
   the insight table. Composable with the existing `lintOnly` filter.
 - Integration test: two-commit git fixture validates that changing `packages/utils`
@@ -188,18 +194,18 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 
 ### Added
 
-- `antiscaler pr check` — runs a three-dot git diff against a base branch,
+- `link pr check` — runs a three-dot git diff against a base branch,
   classifies every changed `.ts`/`.tsx` file via the AST semantic differ, and
   reports a per-file table plus a rollup verdict: `safe to skip build`,
   `build recommended`, or `build required`.
-- `antiscaler pr replay` — loads the last recorded trace session and intersects
+- `link pr replay` — loads the last recorded trace session and intersects
   its module list with the PR-changed files to report which routes and packages
   are touched by this PR.
-- `antiscaler pr report` — combines `pr check` and `pr replay` into a single
+- `link pr report` — combines `pr check` and `pr replay` into a single
   structured JSON output. Pass `--markdown` for a GitHub-comment-ready summary
   and `--output <file>` to write to disk instead of stdout.
 - GitHub Actions workflow (`.github/workflows/pr-report.yml`) that runs
-  `antiscaler pr report --markdown` on every pull request and posts or updates
+  `link pr report --markdown` on every pull request and posts or updates
   a sticky comment with the report.
 - All three PR commands accept `--base <ref>` (default: `main`) and `pr replay`
   / `pr report` also accept `--session <id>` (default: last recorded session).
@@ -214,7 +220,7 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 
 ### Added
 
-- `antiscaler trace analyze [sessionId]` subcommand — prints modules, routes,
+- `link trace analyze [sessionId]` subcommand — prints modules, routes,
   and per-package module counts from a recorded trace session.
 - Route detection in the Next.js webpack plugin: derives page routes from
   webpack entrypoints/chunkGraph, with a `deriveRoutesFromFiles` fallback that
@@ -313,11 +319,11 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 ## [0.1.1] - 2026-04-20
 
 ### Fixed
-- Package now installs cleanly; `npm install antiscaler` no longer fails with
+- Package now installs cleanly; `npm install link` no longer fails with
   "cannot read properties of null (reading 'matches')".
-- `npx antiscaler init` scaffolds `import { defineConfig } from "antiscaler"`
-  (the previous template imported from the misspelled `"antiscale"`).
-- `npx antiscaler build` and other CLI commands resolve the library at
+- `npx link init` scaffolds `import { defineConfig } from "link"`
+  (the previous template imported from a misspelled package name).
+- `npx link build` and other CLI commands resolve the library at
   runtime — fixed by splitting the library entry (`dist/index.js`) from the
   CLI binary entry (`dist/cli.js`) in the package's `exports` map.
 
@@ -329,7 +335,7 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 
 ### Added
 - Initial public release.
-- `defineConfig` helper and Zod-validated config schema (`antiscale.config.ts`,
+- `defineConfig` helper and Zod-validated config schema (`link.config.ts`,
   `.js`, or `.mjs`).
 - Task DAG with cycle detection (`core/graph`), level-based parallel execution.
 - Content-based caching: SHA-256 hashes of input globs; unchanged inputs
@@ -337,22 +343,22 @@ semver stability guarantee: no breaking changes in minor or patch releases.
 - CLI commands: `build`, `dev`, `run <task>`, `init`, `insight`, `env`, `check`.
 - Auto-detection for package manager (npm / yarn / pnpm), runtime (Node /
   Bun / Deno), and framework (Next.js / Vite / generic).
-- Lazy command registration so `antiscaler --help` stays under 100 ms.
+- Lazy command registration so `link --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/antiscaler/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/saintparish4/antiscaler/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/saintparish4/antiscaler/compare/v0.9.3...v1.0.0
-[0.9.3]: https://github.com/saintparish4/antiscaler/compare/v0.9.2...v0.9.3
-[0.9.2]: https://github.com/saintparish4/antiscaler/compare/v0.9.1...v0.9.2
-[0.9.1]: https://github.com/saintparish4/antiscaler/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/saintparish4/antiscaler/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/saintparish4/antiscaler/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/saintparish4/antiscaler/compare/v0.5.1...v0.7.0
-[0.5.1]: https://github.com/saintparish4/antiscaler/compare/v0.5.0...v0.5.1
-[0.5.0]: https://github.com/saintparish4/antiscaler/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/saintparish4/antiscaler/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/saintparish4/antiscaler/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/saintparish4/antiscaler/compare/v0.1.2...v0.2.0
-[0.1.2]: https://github.com/saintparish4/antiscaler/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/saintparish4/antiscaler/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/saintparish4/antiscaler/releases/tag/v0.1.0
+[Unreleased]: https://github.com/saintparish4/link/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/saintparish4/link/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/saintparish4/link/compare/v0.9.3...v1.0.0
+[0.9.3]: https://github.com/saintparish4/link/compare/v0.9.2...v0.9.3
+[0.9.2]: https://github.com/saintparish4/link/compare/v0.9.1...v0.9.2
+[0.9.1]: https://github.com/saintparish4/link/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/saintparish4/link/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/saintparish4/link/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/saintparish4/link/compare/v0.5.1...v0.7.0
+[0.5.1]: https://github.com/saintparish4/link/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/saintparish4/link/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/saintparish4/link/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/saintparish4/link/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/saintparish4/link/compare/v0.1.2...v0.2.0
+[0.1.2]: https://github.com/saintparish4/link/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/saintparish4/link/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/saintparish4/link/releases/tag/v0.1.0

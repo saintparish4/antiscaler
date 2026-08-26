@@ -1,11 +1,11 @@
 /**
  * @module
- * `antiscaler impact` (roadmap 1.5) — the headline prediction: which tests a
+ * `link impact` (roadmap 1.5) — the headline prediction: which tests a
  * change requires, from the full Pillar 1 pipeline (signature differ → blast
  * radius → test impact).
  *
  * REPORT-ONLY by design. Every run appends its prediction to
- * `.antiscale/history/impact.jsonl`; the measured false-skip rate over those
+ * `.link/history/impact.jsonl`; the measured false-skip rate over those
  * shadow runs is what earns the right to actually skip tests. The confidence
  * this returns is a graph-resolution score, not a promise.
  */

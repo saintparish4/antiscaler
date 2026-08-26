@@ -184,7 +184,7 @@ export function getDependents(
  * BFS over the reverse import graph: every file that is directly changed OR
  * transitively imports a changed file. The file-level analogue of
  * `computeAffectedPackages` in package-graph.ts — and the blast-radius
- * primitive for `antiscaler impact`.
+ * primitive for `link impact`.
  */
 export function computeAffectedFiles(
 	changed: ReadonlySet<string>,

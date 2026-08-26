@@ -1,18 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type {
-	ResolvedAntiscaleConfig,
-	TaskGraph,
-} from "../../../types/index.js";
+import type { ResolvedLinkConfig, TaskGraph } from "../../../types/index.js";
 import { ConfigError, CycleError } from "../../errors.js";
 import { buildGraph } from "../planner.js";
 import { validateTaskGraph } from "../validation.js";
 
-type Tasks = ResolvedAntiscaleConfig["tasks"];
+type Tasks = ResolvedLinkConfig["tasks"];
 
 function graphFor(tasks: Tasks): TaskGraph {
 	return buildGraph({
 		strategy: "adaptive",
-		cache: { mode: "content", directory: ".antiscale/cache" },
+		cache: { mode: "content", directory: ".link/cache" },
 		tasks,
 	});
 }

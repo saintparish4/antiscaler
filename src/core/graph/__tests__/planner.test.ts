@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { ResolvedAntiscaleConfig } from "../../../types/index.js";
+import type { ResolvedLinkConfig } from "../../../types/index.js";
 import { CycleError } from "../../errors.js";
 import { buildGraph } from "../planner.js";
 
-function makeConfig(
-	tasks: ResolvedAntiscaleConfig["tasks"],
-): ResolvedAntiscaleConfig {
+function makeConfig(tasks: ResolvedLinkConfig["tasks"]): ResolvedLinkConfig {
 	return {
 		strategy: "adaptive",
-		cache: { mode: "content", directory: ".antiscale/cache" },
+		cache: { mode: "content", directory: ".link/cache" },
 		tasks,
 	};
 }

@@ -8,7 +8,7 @@ import { hashTaskInputs } from "../hashing.js";
 const tmpDirs: string[] = [];
 
 function makeTmpDir(): string {
-	const dir = mkdtempSync(join(tmpdir(), "antiscale-hash-"));
+	const dir = mkdtempSync(join(tmpdir(), "link-hash-"));
 	tmpDirs.push(dir);
 	return dir;
 }

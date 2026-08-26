@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { AntiscaleError, ConfigError } from "../../../core/errors.js";
+import { ConfigError, LinkError } from "../../../core/errors.js";
 import { writeGlobalColorChoice } from "../../visuals/color.js";
 import { renderError, renderUnexpectedError } from "../error.js";
 
@@ -21,10 +21,7 @@ describe("renderError", () => {
 	it("leads with the machine-readable code, then the message", () => {
 		const sink = capture();
 
-		renderError(
-			new AntiscaleError("MY_CODE", "something went wrong"),
-			sink.write,
-		);
+		renderError(new LinkError("MY_CODE", "something went wrong"), sink.write);
 
 		expect(sink.text()).toContain("[MY_CODE]");
 		expect(sink.text()).toContain("something went wrong");
@@ -37,13 +34,13 @@ describe("renderError", () => {
 
 		expect(sink.text()).toContain("[CONFIG_ERROR]");
 		expect(sink.text()).toContain("Hint:");
-		expect(sink.text()).toContain("antiscaler doctor");
+		expect(sink.text()).toContain("link doctor");
 	});
 
 	it("omits the hint line when there is no hint", () => {
 		const sink = capture();
 
-		renderError(new AntiscaleError("BARE", "no hint here"), sink.write);
+		renderError(new LinkError("BARE", "no hint here"), sink.write);
 
 		expect(sink.text()).not.toContain("Hint:");
 	});

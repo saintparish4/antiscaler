@@ -15,14 +15,14 @@ export async function loadTrace(
 	cwd: string,
 	sessionId: string | "last",
 ): Promise<TraceFile> {
-	const dir = path.resolve(cwd, ".antiscale/traces");
+	const dir = path.resolve(cwd, ".link/traces");
 	let files: string[];
 	try {
 		files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
 	} catch (err) {
 		if ((err as NodeJS.ErrnoException).code === "ENOENT") {
 			throw new ConfigError(
-				`Trace directory not found: "${dir}". Run \`antiscaler trace\` first to record a session.`,
+				`Trace directory not found: "${dir}". Run \`link trace\` first to record a session.`,
 				{ cause: err },
 			);
 		}

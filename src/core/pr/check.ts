@@ -1,6 +1,6 @@
 /**
  * @module
- * `antiscaler pr check` — classify every TypeScript file a branch changes
+ * `link pr check` — classify every TypeScript file a branch changes
  * relative to its base and reduce them to one build verdict.
  */
 

@@ -1,4 +1,4 @@
-export class AntiscaleError extends Error {
+export class LinkError extends Error {
 	hint?: string;
 	constructor(
 		public code: string,
@@ -6,25 +6,25 @@ export class AntiscaleError extends Error {
 		options?: ErrorOptions,
 	) {
 		super(message, options);
-		this.name = "AntiscaleError";
+		this.name = "LinkError";
 	}
 }
 
-export class ConfigError extends AntiscaleError {
+export class ConfigError extends LinkError {
 	constructor(message: string, options?: ErrorOptions) {
 		super("CONFIG_ERROR", message, options);
-		this.hint = "Run `antiscaler doctor` to diagnose configuration issues.";
+		this.hint = "Run `link doctor` to diagnose configuration issues.";
 	}
 }
 
-export class CycleError extends AntiscaleError {
+export class CycleError extends LinkError {
 	constructor(public cycle: string[]) {
 		super("CYCLE_ERROR", `Circular dependency detected: ${cycle.join(" -> ")}`);
 		this.hint = "Remove or reorder `dependsOn` entries to break the cycle.";
 	}
 }
 
-export class TaskExecutionError extends AntiscaleError {
+export class TaskExecutionError extends LinkError {
 	constructor(
 		public task: string,
 		public exitCode: number,
@@ -40,23 +40,23 @@ export class TaskExecutionError extends AntiscaleError {
 	}
 }
 
-export class CacheError extends AntiscaleError {
+export class CacheError extends LinkError {
 	constructor(message: string, options?: ErrorOptions) {
 		super("CACHE_ERROR", message, options);
-		this.hint = "Delete `.antiscale/cache/` and retry.";
+		this.hint = "Delete `.link/cache/` and retry.";
 	}
 }
 
-export class GraphError extends AntiscaleError {
+export class GraphError extends LinkError {
 	constructor(message: string, options?: ErrorOptions) {
 		super("GRAPH_ERROR", message, options);
-		this.hint = "Delete `.antiscale/graph/` and retry.";
+		this.hint = "Delete `.link/graph/` and retry.";
 	}
 }
 
-export class CliUsageError extends AntiscaleError {
+export class CliUsageError extends LinkError {
 	constructor(message: string) {
 		super("CLI_USAGE", message);
-		this.hint = "Run `antiscaler --help` for usage information.";
+		this.hint = "Run `link --help` for usage information.";
 	}
 }

@@ -1,6 +1,6 @@
 /**
  * @module
- * `antiscaler doctor` — the environment diagnosis behind the command. Each
+ * `link doctor` — the environment diagnosis behind the command. Each
  * check answers one question and returns a {@link Diagnostic}; the command
  * renders them and maps `error` onto a non-zero exit code.
  *
@@ -10,8 +10,8 @@
 
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
-import type { ResolvedAntiscaleConfig } from "../../types/index.js";
-import { findAntiscaleConfigPath, loadConfig } from "../config/loader.js";
+import type { ResolvedLinkConfig } from "../../types/index.js";
+import { findLinkConfigPath, loadConfig } from "../config/loader.js";
 
 export type DiagnosticLevel = "ok" | "warn" | "error";
 
@@ -87,7 +87,7 @@ export async function checkCacheSize(
 }
 
 export async function checkTraces(cwd: string): Promise<Diagnostic> {
-	const traceDir = path.resolve(cwd, ".antiscale/traces");
+	const traceDir = path.resolve(cwd, ".link/traces");
 	let sessions: string[];
 	try {
 		sessions = (await readdir(traceDir)).filter((f) => f.endsWith(".json"));
@@ -96,14 +96,14 @@ export async function checkTraces(cwd: string): Promise<Diagnostic> {
 			level: "warn",
 			label: "No trace sessions found",
 			detail:
-				"Run `antiscaler trace` to record a session (needed for scope/criticalPaths features).",
+				"Run `link trace` to record a session (needed for scope/criticalPaths features).",
 		};
 	}
 	if (sessions.length === 0) {
 		return {
 			level: "warn",
 			label: "Trace directory exists but contains no sessions",
-			detail: "Run `antiscaler trace` to record a session.",
+			detail: "Run `link trace` to record a session.",
 		};
 	}
 	return { level: "ok", label: `${sessions.length} trace session(s) found` };
@@ -114,7 +114,7 @@ export async function checkTraces(cwd: string): Promise<Diagnostic> {
  * which needs critical paths too — this mirrors the condition in
  * `cli/context.ts`, so the two must change together.
  */
-function requiresTrace(config: ResolvedAntiscaleConfig): boolean {
+function requiresTrace(config: ResolvedLinkConfig): boolean {
 	const performance = config.performance;
 	return (
 		(performance?.lintOnlyForNonCritical ?? false) &&
@@ -123,13 +123,13 @@ function requiresTrace(config: ResolvedAntiscaleConfig): boolean {
 }
 
 async function checkConfig(cwd: string): Promise<Diagnostic[]> {
-	const configPath = findAntiscaleConfigPath(cwd);
+	const configPath = findLinkConfigPath(cwd);
 	if (!configPath) {
 		return [
 			{
 				level: "error",
-				label: "No antiscale.config.ts found",
-				detail: "Run `antiscaler init` to create one.",
+				label: "No link.config.ts found",
+				detail: "Run `link init` to create one.",
 			},
 		];
 	}
@@ -138,7 +138,7 @@ async function checkConfig(cwd: string): Promise<Diagnostic[]> {
 		{ level: "ok", label: `Config found: ${path.basename(configPath)}` },
 	];
 
-	let config: ResolvedAntiscaleConfig;
+	let config: ResolvedLinkConfig;
 	try {
 		config = await loadConfig(cwd);
 	} catch (err) {

@@ -4,7 +4,7 @@ import type { RemoteCacheAdapter } from "../remote-adapter.js";
 export interface S3CacheAdapterOptions {
 	/** S3 bucket name. */
 	bucket: string;
-	/** Key prefix for all cache objects. Default: `"antiscaler/"`. */
+	/** Key prefix for all cache objects. Default: `"link/"`. */
 	prefix?: string;
 	/** AWS region (e.g. `"us-east-1"`). */
 	region?: string;
@@ -57,13 +57,7 @@ async function importS3(): Promise<S3ModuleLike> {
 export function createS3CacheAdapter(
 	options: S3CacheAdapterOptions,
 ): RemoteCacheAdapter {
-	const {
-		bucket,
-		prefix = "antiscaler/",
-		region,
-		endpoint,
-		credentials,
-	} = options;
+	const { bucket, prefix = "link/", region, endpoint, credentials } = options;
 
 	// Lazily initialised — shared across all method calls on this adapter.
 	let statePromise:

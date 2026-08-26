@@ -1,6 +1,6 @@
 /**
  * @module
- * Public types for the antiscaler plugin system. Plugins observe and
+ * Public types for the link plugin system. Plugins observe and
  * optionally override caching / execution decisions; they never throw out
  * of the runner (errors are routed to onPluginError).
  */

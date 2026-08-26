@@ -35,7 +35,7 @@ export async function hashTaskInputs(
 		await fg(patterns, {
 			cwd,
 			onlyFiles: true,
-			ignore: ["node_modules/**", ".git/**", ".antiscale/**"],
+			ignore: ["node_modules/**", ".git/**", ".link/**"],
 		})
 	).sort();
 

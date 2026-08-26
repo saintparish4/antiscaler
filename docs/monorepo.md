@@ -1,10 +1,10 @@
 # Monorepo setup
 
-Antiscaler has first-class support for pnpm workspaces, npm workspaces, and Yarn workspaces. This guide walks through a pnpm workspace setup.
+Link has first-class support for pnpm workspaces, npm workspaces, and Yarn workspaces. This guide walks through a pnpm workspace setup.
 
 ## Workspace discovery
 
-Antiscaler discovers packages from:
+Link discovers packages from:
 
 - `pnpm-workspace.yaml`
 - `package.json` `workspaces` field (npm / Yarn)
@@ -13,8 +13,8 @@ Antiscaler discovers packages from:
 Enable workspace mode in your config:
 
 ```typescript
-// antiscale.config.ts
-import { defineConfig } from "antiscaler";
+// link.config.ts
+import { defineConfig } from "link";
 
 export default defineConfig({
   strategy: "adaptive",
@@ -40,7 +40,7 @@ export default defineConfig({
 });
 ```
 
-`workspace.scripts` is the list of scripts that Antiscaler auto-generates cross-package tasks for. When `build` is in that list, Antiscaler creates a `<package-name>:build` task for every discovered workspace package (where `<package-name>` is the `name` field in the package's `package.json`).
+`workspace.scripts` is the list of scripts that Link auto-generates cross-package tasks for. When `build` is in that list, Link creates a `<package-name>:build` task for every discovered workspace package (where `<package-name>` is the `name` field in the package's `package.json`).
 
 ## Git-diff scoping
 
@@ -57,7 +57,7 @@ git: {
 ## `--affected`: run only what changed
 
 ```bash
-npx antiscaler build --affected
+npx link build --affected
 ```
 
 `--affected` computes the set of packages whose files changed on the current branch, then **cascades** to include any package that depends on a changed package (transitively). Tasks for packages outside the affected set are recorded as `SKIP`.
@@ -77,7 +77,7 @@ packages/
 If you change a file in `packages/utils`, `--affected` will include `utils`, `web`, and `api` (because they depend on `utils`), but skip `docs`.
 
 ```
-npx antiscaler build --affected
+npx link build --affected
 
 TASK               DURATION   STATUS
 --------------------------------------
@@ -91,7 +91,7 @@ docs:build         -          SKIP
 
 ```
 my-monorepo/
-  antiscale.config.ts
+  link.config.ts
   pnpm-workspace.yaml
   package.json
   packages/
@@ -113,10 +113,10 @@ packages:
   - "packages/*"
 ```
 
-`antiscale.config.ts` at the workspace root:
+`link.config.ts` at the workspace root:
 
 ```typescript
-import { defineConfig } from "antiscaler";
+import { defineConfig } from "link";
 
 export default defineConfig({
   strategy: "adaptive",
@@ -149,10 +149,10 @@ Run from the workspace root:
 
 ```bash
 # Build only what changed on this branch
-npx antiscaler build --affected
+npx link build --affected
 
 # Run everything (full build with caching)
-npx antiscaler build
+npx link build
 ```
 
 ## Remote cache in CI

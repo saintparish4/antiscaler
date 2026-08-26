@@ -1,6 +1,6 @@
 # PR commands
 
-Antiscaler's `pr` subcommands help you understand what a pull request actually changes — both at the TypeScript AST level and in terms of which routes and packages your running app loads.
+Link's `pr` subcommands help you understand what a pull request actually changes — both at the TypeScript AST level and in terms of which routes and packages your running app loads.
 
 ## Commands
 
@@ -9,8 +9,8 @@ Antiscaler's `pr` subcommands help you understand what a pull request actually c
 Classifies every changed `.ts` / `.tsx` file by comparing its exported symbols before and after:
 
 ```bash
-npx antiscaler pr check
-npx antiscaler pr check --base origin/main
+npx link pr check
+npx link pr check --base origin/main
 ```
 
 Output:
@@ -48,8 +48,8 @@ Verdict: build required
 Loads the last recorded trace session and intersects the list of changed files with the modules recorded during that session:
 
 ```bash
-npx antiscaler pr replay
-npx antiscaler pr replay --base origin/main --session <sessionId>
+npx link pr replay
+npx link pr replay --base origin/main --session <sessionId>
 ```
 
 Output:
@@ -78,13 +78,13 @@ Runs both `pr check` and `pr replay` and produces a combined report:
 
 ```bash
 # JSON to stdout
-npx antiscaler pr report
+npx link pr report
 
 # Markdown suitable for a GitHub comment
-npx antiscaler pr report --markdown
+npx link pr report --markdown
 
 # Write to a file
-npx antiscaler pr report --markdown --output pr-report.md
+npx link pr report --markdown --output pr-report.md
 ```
 
 JSON output shape:
@@ -114,9 +114,9 @@ JSON output shape:
 
 The workflow at `.github/workflows/pr-report.yml` runs `pr report --markdown` on every pull request and posts (or updates) a sticky comment with the report.
 
-The workflow is already committed to the repository at `.github/workflows/pr-report.yml`. It uses `actions/github-script` to post or update a sticky comment with `## Antiscaler PR Report` as the marker. No additional secrets are required — the default `GITHUB_TOKEN` is sufficient.
+The workflow is already committed to the repository at `.github/workflows/pr-report.yml`. It uses `actions/github-script` to post or update a sticky comment with `## Link PR Report` as the marker. No additional secrets are required — the default `GITHUB_TOKEN` is sufficient.
 
-The workflow triggers on `pull_request` (opened, synchronize, reopened), installs dependencies with pnpm, runs `antiscaler pr report --base ${{ github.base_ref }} --markdown --output pr-report.md`, then creates or updates the comment.
+The workflow triggers on `pull_request` (opened, synchronize, reopened), installs dependencies with pnpm, runs `link pr report --base ${{ github.base_ref }} --markdown --output pr-report.md`, then creates or updates the comment.
 
 ## Options
 

@@ -4,14 +4,14 @@
 
 **Cause:** The `inputs` array for a task is empty or the glob doesn't match any files.
 
-**Fix:** Verify the globs match your source files. Antiscaler uses `fast-glob` internally and ignores `node_modules/`, `.git/`, and `.antiscale/`. Use `find` to approximate the same check:
+**Fix:** Verify the globs match your source files. Link uses `fast-glob` internally and ignores `node_modules/`, `.git/`, and `.link/`. Use `find` to approximate the same check:
 
 ```bash
 # macOS / Linux
 find src -type f
 
-# The exact pattern antiscaler uses (excludes node_modules, .git, .antiscale):
-find . -path ./node_modules -prune -o -path ./.git -prune -o -path ./.antiscale -prune -o -name '*.ts' -print
+# The exact pattern link uses (excludes node_modules, .git, .link):
+find . -path ./node_modules -prune -o -path ./.git -prune -o -path ./.link -prune -o -name '*.ts' -print
 ```
 
 Then check your config:
@@ -28,14 +28,14 @@ An empty `inputs: []` means the task never hashes — it will always be a cache 
 
 ---
 
-## 2. `antiscaler: command not found`
+## 2. `link: command not found`
 
-**Cause:** The binary isn't on PATH. Antiscaler is installed as a local dev dependency.
+**Cause:** The binary isn't on PATH. Link is installed as a local dev dependency.
 
 **Fix:** Use `npx` or add a script to `package.json`:
 
 ```bash
-npx antiscaler build
+npx link build
 ```
 
 Or add to `package.json`:
@@ -43,7 +43,7 @@ Or add to `package.json`:
 ```json
 {
   "scripts": {
-    "build:cached": "antiscaler build"
+    "build:cached": "link build"
   }
 }
 ```
@@ -52,11 +52,11 @@ Or add to `package.json`:
 
 ## 3. Config file not found
 
-**Cause:** Antiscaler looks for `antiscale.config.ts`, `antiscale.config.js`, or `antiscale.config.mjs` in the current working directory.
+**Cause:** Link looks for `link.config.ts`, `link.config.js`, or `link.config.mjs` in the current working directory.
 
-**Fix:** Create the config with `npx antiscaler init`, or check you're running from the project root.
+**Fix:** Create the config with `npx link init`, or check you're running from the project root.
 
-Note: the config filename is `antiscale.config.ts` (no `r` at the end), while the package name and CLI are `antiscaler`.
+Note: the config filename is `link.config.ts` (no `r` at the end), while the package name and CLI are `link`.
 
 ---
 
@@ -72,12 +72,12 @@ workspace: {
 }
 ```
 
-Antiscaler looks for:
+Link looks for:
 - `pnpm-workspace.yaml` (pnpm)
 - `package.json` `workspaces` field (npm / Yarn)
 - `tsconfig.json` project references
 
-Run `npx antiscaler env` to see what was detected.
+Run `npx link env` to see what was detected.
 
 ---
 
@@ -94,7 +94,7 @@ git: {
 },
 ```
 
-Run `git diff --name-only origin/main` manually to verify the diff is what you expect — this is the exact command antiscaler runs internally with that `baseRef`.
+Run `git diff --name-only origin/main` manually to verify the diff is what you expect — this is the exact command link runs internally with that `baseRef`.
 
 ---
 
@@ -102,7 +102,7 @@ Run `git diff --name-only origin/main` manually to verify the diff is what you e
 
 **Cause:** The package's `package.json` doesn't declare the changed package as a dependency, so the cascade doesn't reach it.
 
-**Fix:** Ensure the dependent package lists the changed package in `dependencies` or `devDependencies` in its own `package.json`. Antiscaler's cascade walks workspace dependency edges, not just `dependsOn` in the task graph.
+**Fix:** Ensure the dependent package lists the changed package in `dependencies` or `devDependencies` in its own `package.json`. Link's cascade walks workspace dependency edges, not just `dependsOn` in the task graph.
 
 ---
 
@@ -116,11 +116,11 @@ Run `git diff --name-only origin/main` manually to verify the diff is what you e
 - Line endings are consistent (`git config core.autocrlf`)
 - The remote backend is reachable (`curl -I <url>/<any-hash>` should return 404, not a network error)
 
-Run `npx antiscaler doctor` to check for obvious config issues.
+Run `npx link doctor` to check for obvious config issues.
 
 ---
 
-## 8. `antiscaler doctor` reports a validation error
+## 8. `link doctor` reports a validation error
 
 **Cause:** The config failed Zod validation, usually due to an unknown task referenced in `dependsOn` or a typo in a field name.
 
@@ -150,20 +150,20 @@ Check that every task name in `dependsOn` matches a key in `tasks`.
    ```
 2. Record a trace session if none exists:
    ```bash
-   npx antiscaler trace
+   npx link trace
    ```
-3. Run `npx antiscaler doctor` — it warns if `criticalPaths` is configured but no trace sessions exist.
+3. Run `npx link doctor` — it warns if `criticalPaths` is configured but no trace sessions exist.
 
 ---
 
 ## 10. `pr replay` prints "No trace session found"
 
-**Cause:** No trace sessions have been recorded under `.antiscale/traces/`.
+**Cause:** No trace sessions have been recorded under `.link/traces/`.
 
 **Fix:** Record a session first:
 
 ```bash
-npx antiscaler trace
+npx link trace
 ```
 
 Then re-run `pr replay`. If you're in CI and don't have a trace session, either commit a recorded session to the repo or skip `pr replay` (the `pr check` command works without traces).
@@ -172,9 +172,9 @@ Then re-run `pr replay`. If you're in CI and don't have a trace session, either 
 
 ## Still stuck?
 
-Run `npx antiscaler doctor` — it checks the most common issues automatically. If the problem persists, open an issue at [github.com/saintparish4/antiscaler](https://github.com/saintparish4/antiscaler/issues) with the output of:
+Run `npx link doctor` — it checks the most common issues automatically. If the problem persists, open an issue at [github.com/saintparish4/link](https://github.com/saintparish4/link/issues) with the output of:
 
 ```bash
-npx antiscaler doctor
-npx antiscaler env
+npx link doctor
+npx link env
 ```
