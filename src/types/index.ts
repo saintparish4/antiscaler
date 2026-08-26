@@ -6,6 +6,8 @@ import type {
 } from "../core/config/schema.js";
 import type { PluginRegistry } from "../core/plugins/registry.js";
 
+export type { RunReason, TaskProvenance } from "./provenance.js";
+
 /** The object a user passes to `defineConfig`: every field optional. */
 export type LinkConfig = z.input<typeof linkConfigSchema>;
 
