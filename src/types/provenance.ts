@@ -7,7 +7,9 @@
  * reason that has nothing to do with `db.ts`.
  */
 export type RunReason =
-	| { kind: "cache-miss"; expectedHash: string; actualHash: string }
+	/** `expectedHash` is null when nothing was cached yet — a first run, not
+	 * an invalidation. The two look identical once flattened to a string. */
+	| { kind: "cache-miss"; expectedHash: string | null; actualHash: string }
 	| { kind: "affected-by"; changedFiles: string[] }
 	/** The task has no cache key, or strict mode opts it out of caching. */
 	| { kind: "always" };

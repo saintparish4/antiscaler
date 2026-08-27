@@ -7,6 +7,7 @@ import type {
 	ResolvedLinkConfig,
 	TaskConfig,
 	TaskGraph,
+	TaskProvenance,
 } from "../../types/index.js";
 import { hashTaskInputs } from "../cache/hashing.js";
 import type { RemoteCacheAdapter } from "../cache/remote-adapter.js";
@@ -19,6 +20,7 @@ import {
 } from "../cache/store.js";
 import type { PluginRegistry } from "../plugins/registry.js";
 import type { OnTaskEvent } from "../progress/reporter.js";
+import { recordCacheMiss } from "../provenance/capture.js";
 import type { TaskExecutor } from "./executor.js";
 import { executeTask } from "./executor.js";
 import { runScheduled } from "./scheduler.js";
@@ -58,6 +60,12 @@ export interface RunOptions {
 	 * rendering is active so child output can't tear through the display.
 	 */
 	onTaskOutput?: (task: string, line: string) => void;
+	/**
+	 * Seeded by `createContext()`. The runner only refines it, upgrading a
+	 * task's reason to `cache-miss` once the hash comparison produces both
+	 * sides — it never rebuilds the DAG-derived fields.
+	 */
+	provenance?: Map<string, TaskProvenance>;
 }
 
 export interface TaskRunResult {
@@ -215,6 +223,11 @@ async function runOneTask(
 			if (plugins) await plugins.runOnAfterExecute(taskName, result);
 			return result;
 		}
+
+		// Past the hit check, so this task is definitively a local miss and both
+		// sides of the comparison exist. Keep them instead of discarding them
+		// with the boolean.
+		recordCacheMiss(options.provenance, taskName, cached?.hash ?? null, hash);
 
 		// Local miss — check remote cache before running the task. A remote
 		// read failure is non-fatal (symmetric with the write path below): we

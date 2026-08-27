@@ -4,7 +4,10 @@ import { wrapFrameworkAsPlugin } from "../adapters/frameworks/plugin.js";
 import { viteAdapter } from "../adapters/frameworks/vite.js";
 import { createHttpCacheAdapter } from "../core/cache/adapters/http-adapter.js";
 import { createS3CacheAdapter } from "../core/cache/adapters/s3-adapter.js";
-import { getChangedFiles, getChangedPackages } from "../core/cache/git-diff.js";
+import {
+	changedFilesToPackages,
+	getChangedFiles,
+} from "../core/cache/git-diff.js";
 import type { RemoteCacheAdapter } from "../core/cache/remote-adapter.js";
 import { loadConfig } from "../core/config/loader.js";
 import { detectProject } from "../core/detection/project.js";
@@ -18,6 +21,7 @@ import {
 } from "../core/graph/package-graph.js";
 import { buildGraph } from "../core/graph/planner.js";
 import { PluginRegistry } from "../core/plugins/registry.js";
+import { buildProvenance } from "../core/provenance/capture.js";
 import { isCriticalChange } from "../core/scope/critical-path.js";
 import { loadTrace } from "../core/scope/trace-loader.js";
 import type { LinkContext, ResolvedLinkConfig } from "../types/index.js";
@@ -87,6 +91,7 @@ export async function createContext(
 
 	let packageScopes: string[] | undefined;
 	let affectedPackages: ReadonlySet<string> | undefined;
+	let changedFiles: string[] | undefined;
 	if (config.git?.enabled !== false) {
 		const graph =
 			pkgGraph ??
@@ -98,7 +103,16 @@ export async function createContext(
 				}>,
 				edges: new Map<string, ReadonlySet<string>>(),
 			})));
-		const changed = await getChangedPackages(cwd, graph, config.git?.baseRef);
+		// Resolved in two steps rather than via getChangedPackages so the file
+		// list survives for provenance — that helper discards it internally.
+		const files = await getChangedFiles(
+			config.git?.baseRef === undefined
+				? { cwd }
+				: { cwd, baseRef: config.git.baseRef },
+		);
+		if (files !== null) changedFiles = files;
+		const changed =
+			files === null ? null : changedFilesToPackages(files, graph, cwd);
 		// null  -> git unavailable; skip optimization
 		// empty -> no packages matched (single-pkg repo or no changes yet);
 		//          skip filtering to avoid hashing zero files
@@ -161,6 +175,14 @@ export async function createContext(
 
 	const graph = buildGraph(config);
 
+	const provenance = buildProvenance({
+		tasks: config.tasks,
+		graph,
+		strategy: config.strategy,
+		...(changedFiles !== undefined ? { changedFiles } : {}),
+		...(affectedPackages !== undefined ? { affectedPackages } : {}),
+	});
+
 	return {
 		cwd,
 		config,
@@ -170,6 +192,7 @@ export async function createContext(
 		graph,
 		cacheDir,
 		plugins,
+		provenance,
 		...(packageScopes !== undefined ? { packageScopes } : {}),
 		...(affectedPackages !== undefined ? { affectedPackages } : {}),
 		...(lintOnly ? { lintOnly: true } : {}),
@@ -198,6 +221,7 @@ export function toRunOptions(
 		config: ctx.config,
 		tasks: ctx.config.tasks,
 		plugins: ctx.plugins,
+		provenance: ctx.provenance,
 		...(ctx.packageScopes !== undefined
 			? { packageScopes: ctx.packageScopes }
 			: {}),

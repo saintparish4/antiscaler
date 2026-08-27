@@ -5,6 +5,7 @@ import type {
 	taskConfigSchema,
 } from "../core/config/schema.js";
 import type { PluginRegistry } from "../core/plugins/registry.js";
+import type { TaskProvenance } from "./provenance.js";
 
 export type { RunReason, TaskProvenance } from "./provenance.js";
 
@@ -58,4 +59,10 @@ export interface LinkContext {
 	lintOnly?: boolean;
 	/** Optional remote cache adapter created from `config.cache.remote`. */
 	remoteCache?: RemoteCacheAdapter;
+	/**
+	 * Why each task would run this invocation, keyed by task name. Seeded here
+	 * from the DAG and the git diff; the runner refines a task's reason to
+	 * `cache-miss` once it has both hashes.
+	 */
+	provenance: Map<string, TaskProvenance>;
 }
