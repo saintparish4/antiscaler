@@ -1,5 +1,6 @@
 import type { LinkError } from "../../core/errors.js";
 import { getColors } from "../visuals/color.js";
+import { provenanceLines } from "./provenance.js";
 
 /** A sink for text; `process.stderr.write` satisfies it. */
 export type WriteText = (text: string) => void;
@@ -20,6 +21,13 @@ export function renderError(
 ): void {
 	const colors = getColors();
 	write(`${colors.red(`[${err.code}]`)} ${err.message}\n`);
+	// Context between the failure and the fix: what happened, why this task was
+	// running, then what to do about it.
+	if (err.provenance) {
+		for (const line of provenanceLines(err.provenance)) {
+			write(`${colors.dim(`  ${line}`)}\n`);
+		}
+	}
 	if (err.hint) write(`${colors.dim(`  Hint: ${err.hint}`)}\n`);
 }
 

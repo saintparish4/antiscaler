@@ -170,6 +170,34 @@ Then re-run `pr replay`. If you're in CI and don't have a trace session, either 
 
 ---
 
+## 11. A failure prints "ran because:" — what is it telling me?
+
+When a task fails, Link adds a short block explaining why that task was selected to run:
+
+```
+[TASK_EXECUTION_ERROR] Task "web:build" failed with exit code 1
+  ran because: packages/api/src/db.ts changed
+  also affected: web:test, web:typecheck
+  Hint: Check the output above, fix the failing command in task "web:build", then re-run.
+```
+
+**`ran because:`** is one of three answers:
+
+| Line | Meaning |
+|------|---------|
+| `<files> changed` | The current diff touched these files, which put the task in scope. |
+| `cache miss — inputs hash <a>, cached <b>` | The task's inputs hashed differently than the cached run. |
+| `cache miss — nothing cached for this task yet` | A first run, not an invalidation — there was nothing to compare against. |
+| `this task is never cached, so it runs every time` | The task has no `inputs`, or `strategy: "strict"` opts it out of caching. See issue 1 above. |
+
+**`also affected:`** lists the other tasks this run invalidated. It appears only when there are any.
+
+**This does not explain why the task failed.** It answers "why did this run at all", which is a different question. A task can be selected because `db.ts` changed and then fail for a reason with nothing to do with `db.ts` — treat the file list as a place to start looking, not a cause. The failing command's own output, above the block, is the actual evidence.
+
+The block appears on stderr, only on failure, and only for errors belonging to a task — config and usage errors have no task to explain. Colors follow the same rules as the rest of the CLI (`NO_COLOR`, `--no-color`, `FORCE_COLOR`); when styling is off the same text still prints.
+
+---
+
 ## Still stuck?
 
 Run `npx link doctor` — it checks the most common issues automatically. If the problem persists, open an issue at [github.com/saintparish4/link](https://github.com/saintparish4/link/issues) with the output of:
