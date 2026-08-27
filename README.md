@@ -1,4 +1,8 @@
-# Link
+<div align="center">
+  <a href="https://github.com/saintparish4/link">
+    <img src="assets/link-wordmark.png" width="500" height="auto" alt="Link"/>
+  </a>
+</div>
 
 [![npm version](https://img.shields.io/npm/v/link.svg)](https://www.npmjs.com/package/link)
 [![CI](https://github.com/saintparish4/link/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/link/actions/workflows/ci.yml)
@@ -140,7 +144,7 @@ Everything exported from `link` and `link/tracer` follows [semantic versioning](
 
 ## Contributing
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow and [CLAUDE.md](./CLAUDE.md) for architecture and code-style rules. The short version:
+Read [CONTRIBUTORS.md](./CONTRIBUTORS.md) for the full workflow and [CLAUDE.md](./CLAUDE.md) for architecture and code-style rules. The short version:
 
 - All PRs must pass `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build`.
 - Changed behavior needs a test; a bug fix needs a test that fails before it.
