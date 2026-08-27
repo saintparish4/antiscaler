@@ -1,6 +1,9 @@
 <div align="center">
   <a href="https://github.com/saintparish4/link">
-    <img src="assets/link-wordmark.png" width="500" height="auto" alt="Link"/>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/link-wordmark-dark.png">
+      <img src="assets/link-wordmark.png" width="500" height="auto" alt="Link"/>
+    </picture>
   </a>
 </div>
 
