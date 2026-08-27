@@ -2,7 +2,10 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResolvedLinkConfig } from "../../../types/index.js";
+import type {
+	ResolvedLinkConfig,
+	TaskProvenance,
+} from "../../../types/index.js";
 import { hashTaskInputs } from "../../cache/hashing.js";
 import { readCache, writeCache } from "../../cache/store.js";
 import { TaskExecutionError } from "../../errors.js";
@@ -575,6 +578,197 @@ describe("runTasksWithDeps", () => {
 			);
 			expect(executor).toHaveBeenCalledTimes(1);
 			expect(results[0]?.cacheHit).toBe(false);
+		});
+	});
+
+	// ── Provenance ───────────────────────────────────────────────────────────
+	describe("provenance on failure", () => {
+		function provenanceFor(taskId: string): TaskProvenance {
+			return {
+				taskId,
+				reason: { kind: "affected-by", changedFiles: ["src/db.ts"] },
+				dirtyDependents: ["web:build"],
+				upstreamTasks: ["utils:build"],
+			};
+		}
+
+		it("attaches the failing task's provenance to the thrown error", async () => {
+			const graph = makeGraph([{ name: "build" }]);
+			const config = makeConfig();
+			const entry = provenanceFor("build");
+
+			const error = await runTasksWithDeps(
+				"build",
+				graph,
+				{
+					cwd,
+					cacheDir,
+					pm: "npm",
+					config,
+					tasks: config.tasks,
+					plugins: emptyPlugins(),
+					provenance: new Map([["build", entry]]),
+				},
+				vi
+					.fn<() => Promise<void>>()
+					.mockRejectedValue(new TaskExecutionError("build", 1)),
+			).catch((err: unknown) => err);
+
+			expect(error).toBeInstanceOf(TaskExecutionError);
+			expect((error as TaskExecutionError).provenance).toEqual(entry);
+		});
+
+		it("reports the real hashes when a cached task is invalidated", async () => {
+			// The reason must reflect what the runner observed, not the
+			// affected-by placeholder createContext seeded.
+			writeFileSync(path.join(cwd, "main.ts"), "export const x = 1;");
+			const patterns = ["main.ts"];
+			const staleHash = "stale-hash";
+			await writeCache(cacheDir, {
+				tasks: { build: { hash: staleHash, lastRun: Date.now() } },
+			});
+
+			const graph = makeGraph([{ name: "build" }]);
+			const config = makeConfig();
+			config.tasks = { build: { inputs: patterns } };
+			const provenance = new Map([["build", provenanceFor("build")]]);
+
+			const error = await runTasksWithDeps(
+				"build",
+				graph,
+				{
+					cwd,
+					cacheDir,
+					pm: "npm",
+					config,
+					tasks: config.tasks,
+					plugins: emptyPlugins(),
+					provenance,
+				},
+				vi
+					.fn<() => Promise<void>>()
+					.mockRejectedValue(new TaskExecutionError("build", 1)),
+			).catch((err: unknown) => err);
+
+			const reason = (error as TaskExecutionError).provenance?.reason;
+			expect(reason).toEqual({
+				kind: "cache-miss",
+				expectedHash: staleHash,
+				actualHash: await hashTaskInputs(cwd, patterns),
+			});
+		});
+
+		it("reports a null expected hash on a task that was never cached", async () => {
+			writeFileSync(path.join(cwd, "main.ts"), "export const x = 1;");
+			const patterns = ["main.ts"];
+
+			const graph = makeGraph([{ name: "build" }]);
+			const config = makeConfig();
+			config.tasks = { build: { inputs: patterns } };
+			const provenance = new Map([["build", provenanceFor("build")]]);
+
+			const error = await runTasksWithDeps(
+				"build",
+				graph,
+				{
+					cwd,
+					cacheDir,
+					pm: "npm",
+					config,
+					tasks: config.tasks,
+					plugins: emptyPlugins(),
+					provenance,
+				},
+				vi
+					.fn<() => Promise<void>>()
+					.mockRejectedValue(new TaskExecutionError("build", 1)),
+			).catch((err: unknown) => err);
+
+			const reason = (error as TaskExecutionError).provenance?.reason;
+			expect(reason).toMatchObject({ kind: "cache-miss", expectedHash: null });
+		});
+
+		it("leaves a cache-hit task's reason untouched", async () => {
+			// A task that never ran cannot have been invalidated.
+			writeFileSync(path.join(cwd, "main.ts"), "export const x = 1;");
+			const patterns = ["main.ts"];
+			const hash = await hashTaskInputs(cwd, patterns);
+			await writeCache(cacheDir, {
+				tasks: { build: { hash, lastRun: Date.now() } },
+			});
+
+			const graph = makeGraph([{ name: "build" }]);
+			const config = makeConfig();
+			config.tasks = { build: { inputs: patterns } };
+			const entry = provenanceFor("build");
+			const provenance = new Map([["build", entry]]);
+
+			await runTasksWithDeps(
+				"build",
+				graph,
+				{
+					cwd,
+					cacheDir,
+					pm: "npm",
+					config,
+					tasks: config.tasks,
+					plugins: emptyPlugins(),
+					provenance,
+				},
+				vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+			);
+
+			expect(provenance.get("build")?.reason).toEqual({
+				kind: "affected-by",
+				changedFiles: ["src/db.ts"],
+			});
+		});
+
+		it("wraps a non-LinkError from an injected executor", async () => {
+			const graph = makeGraph([{ name: "build" }]);
+			const config = makeConfig();
+			const entry = provenanceFor("build");
+
+			const error = await runTasksWithDeps(
+				"build",
+				graph,
+				{
+					cwd,
+					cacheDir,
+					pm: "npm",
+					config,
+					tasks: config.tasks,
+					plugins: emptyPlugins(),
+					provenance: new Map([["build", entry]]),
+				},
+				vi.fn<() => Promise<void>>().mockRejectedValue(new Error("raw boom")),
+			).catch((err: unknown) => err);
+
+			expect(error).toBeInstanceOf(TaskExecutionError);
+			expect((error as TaskExecutionError).provenance).toEqual(entry);
+		});
+
+		it("still throws when the run captured no provenance at all", async () => {
+			const graph = makeGraph([{ name: "build" }]);
+			const config = makeConfig();
+
+			await expect(
+				runTasksWithDeps(
+					"build",
+					graph,
+					{
+						cwd,
+						cacheDir,
+						pm: "npm",
+						config,
+						tasks: config.tasks,
+						plugins: emptyPlugins(),
+					},
+					vi
+						.fn<() => Promise<void>>()
+						.mockRejectedValue(new TaskExecutionError("build", 1)),
+				),
+			).rejects.toBeInstanceOf(TaskExecutionError);
 		});
 	});
 });

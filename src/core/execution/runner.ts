@@ -20,6 +20,7 @@ import {
 } from "../cache/store.js";
 import type { PluginRegistry } from "../plugins/registry.js";
 import type { OnTaskEvent } from "../progress/reporter.js";
+import { attachProvenance } from "../provenance/attach.js";
 import { recordCacheMiss } from "../provenance/capture.js";
 import type { TaskExecutor } from "./executor.js";
 import { executeTask } from "./executor.js";
@@ -260,7 +261,7 @@ async function runOneTask(
 			await executor(taskName, taskCfg, options.pm, options.cwd, onOutput);
 		} catch (err) {
 			options.onTaskEvent?.({ task: taskName, status: "failed" });
-			throw err;
+			throw attachProvenance(err, taskName, options.provenance);
 		}
 		const durationMs = Date.now() - start;
 
@@ -294,7 +295,7 @@ async function runOneTask(
 		await executor(taskName, taskCfg, options.pm, options.cwd, onOutput);
 	} catch (err) {
 		options.onTaskEvent?.({ task: taskName, status: "failed" });
-		throw err;
+		throw attachProvenance(err, taskName, options.provenance);
 	}
 	const durationMs = Date.now() - start;
 

@@ -1,5 +1,17 @@
+// Imported from the leaf module rather than the `types/` barrel, which reaches
+// back into core and would make this a cycle.
+import type { TaskProvenance } from "../types/provenance.js";
+
 export class LinkError extends Error {
 	hint?: string;
+	/**
+	 * Why the task that produced this failure was running. Attached by the
+	 * runner so the failure and its reason travel together; absent on errors
+	 * belonging to no task (config, CLI usage) and on successful runs.
+	 *
+	 * This says nothing about why the task FAILED — see `RunReason`.
+	 */
+	provenance?: TaskProvenance;
 	constructor(
 		public code: string,
 		message: string,
