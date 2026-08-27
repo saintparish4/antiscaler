@@ -95,15 +95,15 @@ Link takes no configuration from the environment — that lives in `link.config.
 
 | Variable | Read by | Effect |
 |---|---|---|
-| `NO_COLOR` | `visuals/color.ts`, `progress/reporter.ts`, `doctor.ts` | Disables color everywhere. Highest-priority env signal. |
+| `NO_COLOR` | `visuals/color.ts` | Disables color everywhere. Highest-priority env signal. |
 | `FORCE_COLOR` | `visuals/color.ts` | Forces color on when output is not a TTY. |
 | `CLICOLOR_FORCE` | `visuals/color.ts` | Same as `FORCE_COLOR`. |
-| `CI` | `progress/reporter.ts`, `doctor.ts` | Suppresses color and animated progress. |
+| `CI` | picocolors, indirectly | Nothing in `src/` reads `CI`. picocolors counts it as color *support*, so CI logs keep color unless `NO_COLOR` is set. Animated progress stops in CI because stderr is not a TTY (`printer.ts:82`), not because of this variable. |
 | `JPY_SESSION_NAME` | `visuals/progress.ts` | Detects a Jupyter session and falls back to line-based output. |
 | `LINK_TEST_NO_CLI_PROGRESS` | `visuals/printer.ts`, `visuals/progress.ts` | Test-only. Suppresses progress bars so concurrent output stays assertable. |
 | `LINK_TRACE` | Set by `link trace` | Exported to the spawned dev process. Nothing in Link reads it back — the tracer plugins are unconditional once installed. |
 
-Color precedence: `--color <when>` → `--no-color` → `NO_COLOR` → `FORCE_COLOR`/`CLICOLOR_FORCE` → TTY detection.
+Color precedence: `--color <when>` → `--no-color` → `NO_COLOR` → `FORCE_COLOR`/`CLICOLOR_FORCE` → TTY detection. All of it resolves once in `visuals/color.ts:resolveColorChoice()`, applied process-wide by `writeGlobalColorChoice()`; renderers call `getColors()` and never consult the environment themselves. Adding a second color path is the mistake this design exists to prevent.
 
 To exercise the S3 remote-cache backend locally, note that the config schema has no credential fields — `cli/context.ts` passes only `bucket`, `prefix`, `region`, and `endpoint`, so authentication comes entirely from the AWS SDK default chain (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_PROFILE`, `AWS_REGION`) or an instance/OIDC role. Keep credentials out of config files; they are committed.
 
@@ -125,7 +125,11 @@ Layered, dependencies pointing one way: `cli → core → adapters`. Ports are o
 
 The request path for most commands: `cli/context.ts:createContext()` loads config, detects PM/runtime/framework, builds the task DAG, and computes git-diff scoping — then `core/execution:runTasksWithDeps()` walks DAG levels while `core/cache` hashes inputs against `.link/cache/cache.json`.
 
+Along the way `core/provenance` records why each task was selected to run — cache miss, affected by the diff, or never cached. The runner attaches that record to the `LinkError` a failing task throws, and `cli/render/error.ts` prints it under the failure. It explains *selection*, never *cause*; see [docs/troubleshooting.md](./docs/troubleshooting.md) for the output and that distinction.
+
 Two rules to know before your first PR: business logic does not live in command handlers, and `core` never prints or exits — it throws `LinkError` subclasses and lets the CLI top level map them to exit codes (`LinkError` → 1, unexpected → 2). Full detail in [CLAUDE.md](./CLAUDE.md).
+
+Note the naming: `core/progress/reporter.ts` is a *port* — a bare `TaskEvent` interface with no output code. Everything that actually draws lives in `cli/visuals/` (progress, spinners, task events) and `cli/render/` (command output, errors). A file under `core/` never prints, whatever its name suggests.
 
 ---
 
