@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+
+- **Semantic path (`link diff` / `pr check` / `impact`)** — the AST differ now
+  reuses one ts-morph `Project` across every file instead of constructing a
+  TypeScript compiler host per file, and the blast-radius traversal reads all
+  base-ref versions through a single `git cat-file --batch` instead of one
+  `git show` per file, with per-file classification overlapped. `link impact`
+  over a 10-file diff went from 2.98 s to 0.99 s locally.
+- **Workspace discovery** — package manifests are read in parallel, and file →
+  package ownership is resolved through a directory index instead of a linear
+  scan of every package per file. Both run on every command via
+  `createContext()`.
+- **Input hashing** — files are hashed individually and their digests combined
+  in path order, so peak memory is one file per worker rather than the total
+  size of a task's inputs.
+
 ### Changed
+
+- **Task input hashes change once.** Combining per-file digests produces
+  different cache keys than the previous scheme, so the first run after
+  upgrading rebuilds everything. It also removes an ambiguity in the old
+  scheme, where a path and the following file's contents could run together
+  into the same byte stream.
+- Coverage is no longer enabled for every `vitest` invocation — it is opt-in
+  via `--coverage` (`pnpm test:all` and the CI coverage job), so single-file
+  runs no longer fail global thresholds.
+
+### Removed
+
+- `readCacheSync` — reserved but never called. `writeCacheSync` stays; it is
+  the process-exit safety net.
 
 - **Project rename** — package name, `bin` command, config filename
   (`link.config.ts`), and cache directory (`.link/`) all now use the `link`

@@ -109,3 +109,22 @@ describe("hashTaskInputs", () => {
 		expect(hashBefore).not.toBe(hashAfter);
 	});
 });
+
+describe("hashTaskInputs digest composition", () => {
+	/**
+	 * The previous scheme fed the path and then the raw bytes into one hash,
+	 * so the boundary between them was invisible: `a.ts` containing "x" and an
+	 * empty `a.tsx` both produced the byte stream "a.tsx". Hashing each file to
+	 * a fixed-width digest first removes the ambiguity.
+	 */
+	it("test_no_path_content_collision: distinguishes a shifted path boundary", async () => {
+		const shifted = makeTmpDir();
+		writeFileSync(join(shifted, "a.ts"), "x");
+		const empty = makeTmpDir();
+		writeFileSync(join(empty, "a.tsx"), "");
+
+		expect(await hashTaskInputs(shifted, ["*"])).not.toBe(
+			await hashTaskInputs(empty, ["*"]),
+		);
+	});
+});
