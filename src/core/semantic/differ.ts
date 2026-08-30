@@ -14,6 +14,8 @@
  * score instead of silently passing.
  */
 
+import type { Project, SourceFile } from "ts-morph";
+import type { TsMorph } from "./surface.js";
 import { collectExportedSurface, significantText } from "./surface.js";
 
 export type SemanticClass = "non-impacting" | "internal" | "breaking";
@@ -51,16 +53,83 @@ export interface ClassifyResult {
 	confidenceNotes: string[];
 }
 
+export type ChangeClassifier = (
+	input: ClassifyInput,
+) => Promise<ClassifyResult>;
+
+/**
+ * A classifier owning one ts-morph `Project`, reused across every file it is
+ * given.
+ *
+ * Constructing a `Project` builds a TypeScript compiler host and dominates the
+ * cost of classification, so a per-file Project makes an N-file diff N times
+ * more expensive than it needs to be. `symbol-graph.ts` already creates one
+ * Project and calls `createSourceFile(..., { overwrite: true })` per file; this
+ * is the same pattern behind a closure. Callers classifying more than one file
+ * should hoist a classifier instead of calling `classifyChange` in a loop.
+ *
+ * The returned function is safe to drive concurrently.
+ */
+export function createClassifier(): ChangeClassifier {
+	// Memoized as a promise, not a value, so concurrent first calls await one
+	// construction rather than racing to build several Projects. The import is
+	// lazy because ts-morph is ~50MB and must stay off the startup path.
+	let host: Promise<{ tsm: TsMorph; project: Project }> | undefined;
+	let nextId = 0;
+
+	return async (input: ClassifyInput): Promise<ClassifyResult> => {
+		host ??= (async () => {
+			const tsm = await import("ts-morph");
+			return {
+				tsm,
+				project: new tsm.Project({ useInMemoryFileSystem: true }),
+			};
+		})();
+		const { tsm, project } = await host;
+
+		// Distinct names per call: two classifications in flight at once must
+		// not overwrite each other's source files in the shared Project.
+		const id = nextId++;
+		const beforeFile = project.createSourceFile(
+			`__before_${id}.ts`,
+			input.before,
+			{ overwrite: true },
+		);
+		const afterFile = project.createSourceFile(
+			`__after_${id}.ts`,
+			input.after,
+			{ overwrite: true },
+		);
+		try {
+			return compareSurfaces(input, beforeFile, afterFile, tsm);
+		} finally {
+			// Without this the Project accumulates every file it has ever been
+			// handed, which is the memory leak version of the problem it solves.
+			project.removeSourceFile(beforeFile);
+			project.removeSourceFile(afterFile);
+		}
+	};
+}
+
+/**
+ * Process-wide default classifier. One-shot callers (and the test suite) get
+ * Project reuse without having to thread a classifier through.
+ */
+let defaultClassifier: ChangeClassifier | undefined;
+
 export async function classifyChange(
 	input: ClassifyInput,
 ): Promise<ClassifyResult> {
-	// Lazy import keeps ts-morph (~50MB) out of the startup critical path.
-	// Only loaded when semantic diff is actually needed.
-	const tsm = await import("ts-morph");
-	const project = new tsm.Project({ useInMemoryFileSystem: true });
-	const beforeFile = project.createSourceFile("__before.ts", input.before);
-	const afterFile = project.createSourceFile("__after.ts", input.after);
+	defaultClassifier ??= createClassifier();
+	return defaultClassifier(input);
+}
 
+function compareSurfaces(
+	input: ClassifyInput,
+	beforeFile: SourceFile,
+	afterFile: SourceFile,
+	tsm: TsMorph,
+): ClassifyResult {
 	const beforeApi = collectExportedSurface(beforeFile, tsm);
 	const afterApi = collectExportedSurface(afterFile, tsm);
 

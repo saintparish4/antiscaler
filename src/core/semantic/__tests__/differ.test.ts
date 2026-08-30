@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyChange } from "../differ.js";
+import { classifyChange, createClassifier } from "../differ.js";
 
 function changedNames(r: Awaited<ReturnType<typeof classifyChange>>) {
 	return r.exportedSymbols.changed.map((c) => c.name);
@@ -387,5 +387,53 @@ describe("classifyChange", () => {
 		});
 		expect(r.classification).toBe("breaking");
 		expect(r.exportedSymbols.added).toEqual(["a"]);
+	});
+});
+
+describe("createClassifier", () => {
+	it("classifies many files through one reused project", async () => {
+		const classify = createClassifier();
+		const results = [];
+		for (let i = 0; i < 20; i++) {
+			results.push(
+				await classify({
+					filePath: `m${i}.ts`,
+					before: `export function f${i}(a: number): number { return a; }`,
+					after: `export function f${i}(a: number, b: number): number { return a; }`,
+				}),
+			);
+		}
+		expect(results.map((r) => r.classification)).toEqual(
+			Array(20).fill("breaking"),
+		);
+		expect(results.map((r) => r.filePath)).toEqual(
+			Array.from({ length: 20 }, (_, i) => `m${i}.ts`),
+		);
+	});
+
+	it("keeps concurrent classifications independent", async () => {
+		const classify = createClassifier();
+		const results = await Promise.all([
+			classify({
+				filePath: "a.ts",
+				before: "export const a = 1;",
+				after: "export const a = 1;",
+			}),
+			classify({
+				filePath: "b.ts",
+				before: "export function b(x: number) { return x; }",
+				after: "export function b(x: string) { return x; }",
+			}),
+			classify({
+				filePath: "c.ts",
+				before: "export function c() { return 1; }",
+				after: "export function c() { return 2; }",
+			}),
+		]);
+		expect(results.map((r) => [r.filePath, r.classification])).toEqual([
+			["a.ts", "non-impacting"],
+			["b.ts", "breaking"],
+			["c.ts", "internal"],
+		]);
 	});
 });

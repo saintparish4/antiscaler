@@ -33,7 +33,7 @@ import {
 import type { PackageGraph } from "../graph/package-graph.js";
 import { readFileAtRef } from "../vcs/git.js";
 import type { ClassifyResult, SemanticClass } from "./differ.js";
-import { classifyChange } from "./differ.js";
+import { createClassifier } from "./differ.js";
 import { updateSymbolGraph } from "./symbol-graph.js";
 
 /** `unanalyzed` = changed file the semantic differ cannot parse (non-TS). */
@@ -124,6 +124,10 @@ export async function traceBlastRadius(
 			}
 		});
 
+	// One classifier for the whole traversal: it owns a single ts-morph
+	// Project rather than building one per changed file.
+	const classify = createClassifier();
+
 	const changed: FileImpact[] = [];
 	for (const file of changedFiles.map(toPosix).sort()) {
 		if (!TS_FILE.test(file) || file.endsWith(".d.ts")) {
@@ -140,7 +144,7 @@ export async function traceBlastRadius(
 			readBefore(file),
 			readAfter(file),
 		]);
-		const result = await classifyChange({
+		const result = await classify({
 			filePath: file,
 			before: before ?? "",
 			after: after ?? "",
