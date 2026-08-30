@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-30
+
+The rename is breaking on every public surface, hence the major bump. Nothing
+was ever published under the old name, so there is no upgrade path to
+provide — but a local checkout using `link.config.ts` and `.link/` must move
+to `linkctl.config.ts` and `.linkctl/`.
+
+### Changed
+
+- **Renamed the project to `linkctl`.** The package, the `bin` command, the
+  config filename (`linkctl.config.ts`), the state directory (`.linkctl/`), the
+  `LINKCTL_*` environment variables, the exported types (`LinkctlConfig`,
+  `LinkctlContext`, `LinkctlError`), the tracer plugins
+  (`linkctlVitePlugin`, `linkctlNextPlugin`) and the default S3 key prefix
+  (`linkctl/`) all use the new name.
+
+  Two reasons, both blocking: `link` on npm belongs to a different, actively
+  published package, and `link` is a POSIX coreutil (`/usr/bin/link`) that a
+  globally installed `link` binary would shadow.
+
+  There is no compatibility shim — nothing shipped under the old name, so
+  `link.config.*` is no longer read. The stale `buildflow.config.json`
+  candidate left over from the previous rename is gone too.
+
+- **Task input hashes change once.** Combining per-file digests produces
+  different cache keys than the previous scheme, so the first run after
+  upgrading rebuilds everything. It also removes an ambiguity in the old
+  scheme, where a path and the following file's contents could run together
+  into the same byte stream.
+- Coverage is no longer enabled for every `vitest` invocation — it is opt-in
+  via `--coverage` (`pnpm test:all` and the CI coverage job), so single-file
+  runs no longer fail global thresholds.
+
 ### Performance
 
 - **Semantic path (`linkctl diff` / `pr check` / `impact`)** — the AST differ now
@@ -31,17 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per process and share one spawn between `available()` and `version()`.
   Probing for absent binaries was the expensive case.
 
-### Changed
-
-- **Task input hashes change once.** Combining per-file digests produces
-  different cache keys than the previous scheme, so the first run after
-  upgrading rebuilds everything. It also removes an ambiguity in the old
-  scheme, where a path and the following file's contents could run together
-  into the same byte stream.
-- Coverage is no longer enabled for every `vitest` invocation — it is opt-in
-  via `--coverage` (`pnpm test:all` and the CI coverage job), so single-file
-  runs no longer fail global thresholds.
-
 ### Fixed
 
 - **`cache.json` is written atomically.** It went to a temp file that is then
@@ -54,21 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `readCacheSync` — reserved but never called. `writeCacheSync` stays; it is
   the process-exit safety net.
-
-- **Renamed the project to `linkctl`.** The package, the `bin` command, the
-  config filename (`linkctl.config.ts`), the state directory (`.linkctl/`), the
-  `LINKCTL_*` environment variables, the exported types (`LinkctlConfig`,
-  `LinkctlContext`, `LinkctlError`), the tracer plugins
-  (`linkctlVitePlugin`, `linkctlNextPlugin`) and the default S3 key prefix
-  (`linkctl/`) all use the new name.
-
-  Two reasons, both blocking: `link` on npm belongs to a different, actively
-  published package, and `link` is a POSIX coreutil (`/usr/bin/link`) that a
-  globally installed `link` binary would shadow.
-
-  There is no compatibility shim — nothing shipped under the old name, so
-  `link.config.*` is no longer read. The stale `buildflow.config.json`
-  candidate left over from the previous rename is gone too.
 
 ## [1.1.1] - 2026-07-19
 
@@ -402,7 +409,9 @@ semver stability guarantee: no breaking changes in minor or patch releases.
   Bun / Deno), and framework (Next.js / Vite / generic).
 - Lazy command registration so `link --help` stays under 100 ms.
 
-[Unreleased]: https://github.com/saintparish4/linkctl/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/saintparish4/linkctl/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/saintparish4/linkctl/compare/v1.1.1...v2.0.0
+[1.1.1]: https://github.com/saintparish4/linkctl/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/saintparish4/linkctl/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/saintparish4/linkctl/compare/v0.9.3...v1.0.0
 [0.9.3]: https://github.com/saintparish4/linkctl/compare/v0.9.2...v0.9.3

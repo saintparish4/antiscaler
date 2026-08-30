@@ -27,13 +27,21 @@ Rules:
 - Business logic must not live in command handlers. A command parses options, calls `createContext()`, delegates to `core`, and renders the result. A command file growing branches and conditionals means the logic belongs in `core`.
 - `core` must not print or exit. It reports through the progress/reporter interface and throws typed errors from `core/errors.ts` (`LinkctlError` subclasses with a machine-readable `.code` and a user-facing `.hint`); only the CLI top level catches `LinkctlError` → exit 1, unexpected errors → exit 2.
 - Side effects live at the edges and arrive through injectable interfaces — `runTasksWithDeps` takes a `TaskExecutor`, defaulting to the real one. This is what keeps the suite unit-heavy: unit tests never shell out.
-- Config is loaded once, at one wiring point (`cli/context.ts:createContext()`), which also detects PM/runtime/framework, builds the task DAG, and computes the git-diff `packageScopes`/`affectedPackages` pre-filter. Modules receive what they need instead of re-reading config themselves.
-- `src/cli/index.ts` registers commands with a dynamic `import()` inside each `action()` callback, deferring heavy deps (execa, jiti, fast-glob) until a command actually runs — this is what keeps `linkctl --help` fast. It's a sanctioned exception to "prefer top-level imports"; don't add new lazy imports elsewhere without the same justification.
+- Config is loaded once, at one wiring point (`cli/context.ts:createContext()`), which also detects PM/runtime/framework, builds the task DAG, and computes the git-diff `packageScopes`/`affectedPackages` pre-filter. Modules receive what they need instead of re-reading config themselves. Commands that never run a task and never render provenance pass `{ scope: false }` to skip the git work — `env`, `check`, `insight` do. Anything consuming `packageScopes`, or rendering why a task ran, must leave it on.
+- **Deferred imports are a measured optimization, not a style.** `src/cli/index.ts` registers each command with a dynamic `import()` inside its `action()`; `core/vcs/git.ts` and `core/execution/executor.ts` defer execa; `core/graph/package-graph.ts` defers fast-glob; `adapters/pm/*.ts` defer execa; `core/semantic/{differ,symbol-graph}.ts` defer ts-morph. All of these sit on the static import path of `cli/context.ts`, which every command loads, and each was worth tens of milliseconds of startup. That is the bar: profile first (`node --cpu-prof dist/cli.js <cmd>`), and add one only when a real dependency is being paid for by commands that never use it. Everywhere else, prefer top-level imports.
 - A new capability is a new directory under `core/` plus a thin command — not another branch inside an existing module.
+- Bounded concurrency lives in `core/execution/concurrency.ts` (`mapLimit`, order-preserving). Reuse it rather than writing a second worker pool.
 
 ### Core pipeline
 
 The request path most commands follow: `createContext()` → `core/graph` builds the `TaskGraph` (Kahn's algorithm, cycle detection) → `core/execution:runTasksWithDeps()` resolves DAG levels and runs each task (concurrency-limited, or via the event-driven `scheduler.ts` when `useScheduler` is set) → `core/cache` hashes inputs and reads/writes `.linkctl/cache/cache.json`, narrowed by `core/cache/git-diff.ts` to changed packages. `core/plugins` fans out `onDetect`/`onHash`/`onBeforeExecute`/`onAfterExecute` hooks to registered `BuildPlugin`s (framework adapters are wrapped as plugins). `core/scope` and `core/semantic` (ts-morph-based signature/body diffing, symbol graph, blast-radius, test-impact selection) drive change-intelligence features (`linkctl diff`, `pr check`, `linkctl impact`); predictions are logged to `.linkctl/history/impact.jsonl` for shadow-mode validation before test skipping is ever enabled.
+
+### Invariants worth knowing before you "optimize" them
+
+- **Constructing a ts-morph `Project` dominates the semantic path.** Hoist one classifier with `createClassifier()` and reuse it across files; never call `classifyChange` in a loop. `symbol-graph.ts` follows the same one-Project-per-build shape.
+- **Input hashing is the cache key, so it is correctness-critical.** Each file is hashed to its own digest and the digests are combined in path order. Digests are deliberately *not* shared across the tasks of a run: a path-keyed cache would have to prove nothing rewrote the file since the last task hashed it, and stat (mtime + size) cannot — a same-length rewrite inside one mtime tick is invisible, and serving the stale digest hands a later task a cache key it should have missed. Changing how digests combine changes every cache key; treat that as a deliberate, noted full invalidation.
+- **`cache.json` is written to a temp file and renamed over the target.** Rename is atomic within a filesystem, so an interrupted run leaves the previous cache intact instead of truncated JSON. `writeCacheSync` is the process-exit safety net and needs this most — do not turn either back into a direct write.
+- **`vcs/git.ts` reads many blobs with one `git cat-file --batch`,** falling back to a `git show` per file if the batch cannot be parsed. The two readers must return identical strings, which is why the batch strips the final newline that execa strips for it.
 
 ## Code Style
 
@@ -64,7 +72,7 @@ Three tiers, each answering a different question. Write the test at the cheapest
 - Name tests for the behavior they document (`test_cache_hit`, `test_cache_miss`, `test_incremental_invalidation`), not for the function they call.
 - Use the project's test runner — Vitest projects `unit`, `integration`, `e2e`. Do not introduce another without justification.
 - This repo skews heavily unit-first by design; dependency injection is what makes that possible, so reach for a slower tier only when the question genuinely lives at a boundary or in a workflow.
-- Coverage targets enforced in CI: 70% lines/statements/functions, 60% branches.
+- Coverage is opt-in, not automatic: it runs only under `--coverage` (`pnpm test:all` and the CI coverage job), so `pnpm test:run` and single-file runs stay fast and do not trip global thresholds. CI enforces 70% lines/statements/functions, 60% branches.
 - Read and copy the style of similar existing tests when adding new cases.
 
 ## Commands
@@ -112,11 +120,10 @@ The `.husky/pre-commit` hook gates every commit through `pnpm format:check` → 
 ## Rules
 
 - Do not introduce dependencies without justification.
-- Do not modify the database schema without a migration.
 - Do not expose secrets.
 - Make the code obvious: good names, clear control flow, small functions, strong types, clear abstractions, tests.
 - Use tests to document behavior (`test_cache_hit`, `test_cache_miss`, `test_incremental_invalidation`).
-- Use documentation for system-level concepts (`docs/architecture.md`, `docs/incremental-computation.md`).
+- Use documentation for system-level concepts. User-facing guides live in `docs/` (`getting-started`, `monorepo`, `impact-and-workspace`, `remote-cache`, `pr-commands`, `nextjs`, `vite`, `config-reference`, `troubleshooting`); architectural rules live here.
 
 ### Comments
 
