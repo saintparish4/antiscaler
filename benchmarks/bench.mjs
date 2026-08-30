@@ -2,12 +2,15 @@
 /**
  * Reproducible benchmark harness for Link.
  *
- * Measures four things against deterministic generated fixture projects:
+ * Measures five things against deterministic generated fixture projects:
  *   1. CLI startup — `link --help`
  *   2. Warm run    — cache hit at 100 / 1,000 / 10,000 files (hashing scale)
  *   3. Cold run    — no cache, 1,000-file project
  *   4. Overhead    — cold run minus a raw baseline of the wrapped command,
  *                    i.e. Link's own orchestration cost
+ *   5. Semantic    — `link impact` over a git fixture with N changed files;
+ *                    this is the differ + git-read path, which scales with the
+ *                    size of the diff rather than the size of the project
  *
  * Uses hyperfine (https://github.com/sharkdp/hyperfine) when it is on PATH,
  * otherwise falls back to a built-in timer with the same warmup/run protocol.
@@ -139,6 +142,118 @@ function generateFixture(fileCount) {
 		writeFileSync(
 			join(sourceDir, `module-${index}.ts`),
 			moduleSource(index, randomInts),
+		);
+	}
+	return dir;
+}
+
+// ---------------------------------------------------------------------------
+// Semantic fixture — a real git repo, because `link impact` reads both sides
+// of every changed file out of git and classifies them with the AST differ.
+// The cost scales with the diff, so the fixture commits everything and then
+// dirties a fixed slice of the working tree.
+// ---------------------------------------------------------------------------
+
+function semanticModuleSource(index, signatureVariant) {
+	const previous =
+		index > 0
+			? `import { compute${index - 1} } from "./module-${index - 1}.js";\n`
+			: "";
+	const upstream = index > 0 ? ` + compute${index - 1}(input)` : "";
+	// The changed variant alters the exported parameter list, so the differ
+	// classifies it `breaking` and the blast radius actually propagates —
+	// the expensive path, which is the one worth measuring.
+	const signature =
+		signatureVariant === 0
+			? `export function compute${index}(input: number): number {`
+			: `export function compute${index}(input: number, scale: number): number {`;
+	const body =
+		signatureVariant === 0
+			? `\treturn input * ${index + 1}${upstream};`
+			: `\treturn input * scale * ${index + 1}${upstream};`;
+	return [
+		previous,
+		`export interface Options${index} { id: number; label: string; }`,
+		`export const id${index} = ${index};`,
+		signature,
+		body,
+		"}",
+		"",
+	].join("\n");
+}
+
+function semanticTestSource(index) {
+	return [
+		`import { compute${index} } from "../module-${index}.js";`,
+		"",
+		`export function checks${index}(): boolean {`,
+		`\treturn compute${index}(1) !== undefined;`,
+		"}",
+		"",
+	].join("\n");
+}
+
+/**
+ * Returns the fixture directory, or undefined when git is unavailable — the
+ * semantic scenario is skipped rather than failing the whole run.
+ */
+function generateSemanticFixture(moduleCount, changedCount) {
+	const dir = mkdtempSync(
+		join(tmpdir(), `link-bench-semantic-${moduleCount}-`),
+	);
+	writeFileSync(
+		join(dir, "package.json"),
+		`${JSON.stringify(
+			{ name: "link-bench-semantic", private: true, version: "0.0.0" },
+			null,
+			2,
+		)}\n`,
+	);
+	const sourceDir = join(dir, "src");
+	const testDir = join(sourceDir, "__tests__");
+	mkdirSync(testDir, { recursive: true });
+	for (let index = 0; index < moduleCount; index++) {
+		writeFileSync(
+			join(sourceDir, `module-${index}.ts`),
+			semanticModuleSource(index, 0),
+		);
+		if (index % 5 === 0) {
+			writeFileSync(
+				join(testDir, `module-${index}.test.ts`),
+				semanticTestSource(index),
+			);
+		}
+	}
+
+	// `-c` overrides rather than repo config so the fixture never depends on
+	// the machine's global git identity; --no-verify skips any global hooks.
+	const gitArgs = [
+		"-c",
+		"user.email=bench@example.com",
+		"-c",
+		"user.name=bench",
+		"-c",
+		"commit.gpgsign=false",
+	];
+	const git = (args) => spawnSync("git", [...gitArgs, ...args], { cwd: dir });
+	const init = git(["init", "-q", "-b", "main"]);
+	if (init.error || init.status !== 0) {
+		rmSync(dir, { recursive: true, force: true });
+		return undefined;
+	}
+	git(["add", "-A"]);
+	const commit = git(["commit", "-q", "--no-verify", "-m", "fixture"]);
+	if (commit.error || commit.status !== 0) {
+		rmSync(dir, { recursive: true, force: true });
+		return undefined;
+	}
+
+	// Dirty the working tree and leave it dirty: `--base HEAD` then sees the
+	// same changed set on every timed run, with no --prepare step.
+	for (let index = 0; index < changedCount && index < moduleCount; index++) {
+		writeFileSync(
+			join(sourceDir, `module-${index}.ts`),
+			semanticModuleSource(index, 1),
 		);
 	}
 	return dir;
@@ -353,14 +468,27 @@ function main() {
 	const tiers = options.quick ? [100, 1000] : [100, 1000, 10_000];
 	const primaryTier = 1000;
 	const runCounts = options.quick
-		? { startup: 5, warm: 5, cold: 3, warmup: 1 }
-		: { startup: 20, warm: 15, cold: 10, warmup: 3 };
+		? { startup: 5, warm: 5, cold: 3, semantic: 3, warmup: 1 }
+		: { startup: 20, warm: 15, cold: 10, semantic: 10, warmup: 3 };
+	const semanticModules = options.quick ? 100 : 300;
+	const semanticChanged = options.quick ? 10 : 25;
 
 	logProgress("Generating fixtures ...");
 	const fixtures = new Map();
 	for (const tier of tiers) {
 		fixtures.set(tier, generateFixture(tier));
 		logProgress(`  ${formatCount(tier)} files → ${fixtures.get(tier)}`);
+	}
+	const semanticFixture = generateSemanticFixture(
+		semanticModules,
+		semanticChanged,
+	);
+	if (semanticFixture === undefined) {
+		logProgress("  semantic fixture skipped — git unavailable");
+	} else {
+		logProgress(
+			`  ${formatCount(semanticModules)} modules, ${semanticChanged} changed → ${semanticFixture}`,
+		);
 	}
 
 	try {
@@ -416,6 +544,20 @@ function main() {
 				runs: runCounts.cold,
 				warmup: 1,
 			},
+			...(semanticFixture === undefined
+				? []
+				: [
+						{
+							name: "impact",
+							label: `Semantic — \`link impact\`, ${semanticChanged} changed files of ${formatCount(semanticModules)}`,
+							argv: [nodeBin, cliPath, "impact", "--base", "HEAD"],
+							cwd: semanticFixture,
+							runs: runCounts.semantic,
+							// The first run builds the symbol graph from scratch; the
+							// timed runs should measure the incremental steady state.
+							warmup: Math.max(2, runCounts.warmup),
+						},
+					]),
 		];
 
 		const measure = hyperfineVersion
@@ -484,6 +626,9 @@ function main() {
 	} finally {
 		for (const dir of fixtures.values()) {
 			rmSync(dir, { recursive: true, force: true });
+		}
+		if (semanticFixture !== undefined) {
+			rmSync(semanticFixture, { recursive: true, force: true });
 		}
 	}
 }
