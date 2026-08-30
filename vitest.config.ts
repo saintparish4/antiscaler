@@ -3,8 +3,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	test: {
 		passWithNoTests: true,
+		// Deliberately not `enabled: true`. Thresholds are global, so a
+		// single-file run would fail four of them while measuring nothing
+		// useful. Coverage is opt-in via `--coverage` (`pnpm test:all`, and
+		// the CI coverage job), which is the only place it gates anything.
 		coverage: {
-			enabled: true,
 			provider: "v8",
 			include: ["src/core/**", "src/tracer/**", "src/cli/**"],
 			exclude: ["**/__tests__/**", "**/types.ts", "src/types/**"],
