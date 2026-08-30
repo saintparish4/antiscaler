@@ -129,6 +129,54 @@ describe("toRunOptions", () => {
 	});
 });
 
+/** Two packages, `web` depending on `utils`, with utils changed in HEAD. */
+function workspaceRepoWithChangedUtils(): string {
+	const dir = makeTmpDir();
+	writeFileSync(
+		path.join(dir, "pnpm-workspace.yaml"),
+		"packages:\n  - 'packages/*'\n",
+	);
+	mkdirSync(path.join(dir, "packages/utils/src"), { recursive: true });
+	mkdirSync(path.join(dir, "packages/web/src"), { recursive: true });
+	writeFileSync(
+		path.join(dir, "packages/utils/package.json"),
+		JSON.stringify({ name: "utils", scripts: { build: "tsc" } }),
+	);
+	writeFileSync(
+		path.join(dir, "packages/web/package.json"),
+		JSON.stringify({
+			name: "web",
+			scripts: { build: "next build" },
+			dependencies: { utils: "workspace:*" },
+		}),
+	);
+	writeFileSync(
+		path.join(dir, "packages/utils/src/index.ts"),
+		"export const x = 1;\n",
+	);
+	writeFileSync(
+		path.join(dir, "packages/web/src/index.ts"),
+		"export const y = 1;\n",
+	);
+	writeMinimalConfig(dir, { workspace: { enabled: true }, tasks: {} });
+
+	const GIT = ["-c", "user.email=t@t.com", "-c", "user.name=T"].join(" ");
+	const run = (cmd: string) => execSync(cmd, { cwd: dir, stdio: "ignore" });
+	run("git init");
+	run(`git ${GIT} commit --allow-empty -m base`);
+	run("git add .");
+	run(`git ${GIT} commit -m initial`);
+
+	// Change utils and commit so the HEAD~1 diff shows utils changed.
+	writeFileSync(
+		path.join(dir, "packages/utils/src/index.ts"),
+		"export const x = 2;\n",
+	);
+	run("git add .");
+	run(`git ${GIT} commit -m "change utils"`);
+	return dir;
+}
+
 describe("createContext (cascade / affectedPackages)", () => {
 	it("affectedPackages is undefined when no git repo exists", async () => {
 		const dir = makeTmpDir();
@@ -139,49 +187,7 @@ describe("createContext (cascade / affectedPackages)", () => {
 	});
 
 	it("affectedPackages cascades to dependents when git detects a direct change", async () => {
-		const dir = makeTmpDir();
-		writeFileSync(
-			path.join(dir, "pnpm-workspace.yaml"),
-			"packages:\n  - 'packages/*'\n",
-		);
-		mkdirSync(path.join(dir, "packages/utils/src"), { recursive: true });
-		mkdirSync(path.join(dir, "packages/web/src"), { recursive: true });
-		writeFileSync(
-			path.join(dir, "packages/utils/package.json"),
-			JSON.stringify({ name: "utils", scripts: { build: "tsc" } }),
-		);
-		writeFileSync(
-			path.join(dir, "packages/web/package.json"),
-			JSON.stringify({
-				name: "web",
-				scripts: { build: "next build" },
-				dependencies: { utils: "workspace:*" },
-			}),
-		);
-		writeFileSync(
-			path.join(dir, "packages/utils/src/index.ts"),
-			"export const x = 1;\n",
-		);
-		writeFileSync(
-			path.join(dir, "packages/web/src/index.ts"),
-			"export const y = 1;\n",
-		);
-		writeMinimalConfig(dir, { workspace: { enabled: true }, tasks: {} });
-
-		const GIT = ["-c", "user.email=t@t.com", "-c", "user.name=T"].join(" ");
-		const run = (cmd: string) => execSync(cmd, { cwd: dir, stdio: "ignore" });
-		run("git init");
-		run(`git ${GIT} commit --allow-empty -m base`);
-		run("git add .");
-		run(`git ${GIT} commit -m initial`);
-
-		// Change utils and commit so HEAD~1 diff shows utils changed
-		writeFileSync(
-			path.join(dir, "packages/utils/src/index.ts"),
-			"export const x = 2;\n",
-		);
-		run("git add .");
-		run(`git ${GIT} commit -m "change utils"`);
+		const dir = workspaceRepoWithChangedUtils();
 
 		const { createContext } = await import("../context.js");
 		const ctx = await createContext(dir);
@@ -191,6 +197,30 @@ describe("createContext (cascade / affectedPackages)", () => {
 		expect(ctx.affectedPackages?.has("web")).toBe(true);
 		// packageScopes covers both dirs (so each task hashes its own files normally)
 		expect(ctx.packageScopes?.length).toBe(2);
+	});
+
+	it("scope: false skips the git diff but still builds the workspace graph", async () => {
+		const dir = workspaceRepoWithChangedUtils();
+
+		const { createContext } = await import("../context.js");
+		const ctx = await createContext(dir, { scope: false });
+
+		expect(ctx.affectedPackages).toBeUndefined();
+		expect(ctx.packageScopes).toBeUndefined();
+		// Workspace task generation is independent of scoping and must survive.
+		expect(Object.keys(ctx.config.tasks)).toContain("utils:build");
+		expect(Object.keys(ctx.config.tasks)).toContain("web:build");
+	});
+
+	it("scope: false leaves provenance without a changed-file reason", async () => {
+		const dir = workspaceRepoWithChangedUtils();
+
+		const { createContext } = await import("../context.js");
+		const scoped = await createContext(dir);
+		const unscoped = await createContext(dir, { scope: false });
+
+		expect(scoped.provenance).toBeDefined();
+		expect(unscoped.provenance).toBeDefined();
 	});
 });
 

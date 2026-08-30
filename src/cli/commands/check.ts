@@ -4,7 +4,7 @@ import { lines } from "../render/writer.js";
 import { getPrinter } from "../visuals/printer.js";
 
 export async function registerCheckAction(): Promise<void> {
-	const ctx = await createContext();
+	const ctx = await createContext(process.cwd(), { scope: false });
 	validateTaskGraph(ctx.config.tasks, ctx.graph);
 	lines(getPrinter(), "Config and graph are valid.");
 }

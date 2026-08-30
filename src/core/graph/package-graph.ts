@@ -8,7 +8,6 @@
 
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import fg from "fast-glob";
 import type { TaskConfig } from "../../types/index.js";
 
 export interface WorkspacePackage {
@@ -35,6 +34,10 @@ export interface PackageGraph {
 const WORKSPACE_GLOBS_FALLBACK = ["packages/*", "apps/*", "services/*"];
 
 export async function loadPackageGraph(cwd: string): Promise<PackageGraph> {
+	// Lazy, for the same reason symbol-graph.ts loads it lazily: this module is
+	// on the static import path of cli/context.ts, so a static fast-glob costs
+	// every command ~25 ms — including the ones that never scan a workspace.
+	const fg = (await import("fast-glob")).default;
 	const globs = await readWorkspaceGlobs(cwd);
 	const dirs = await fg(globs, {
 		cwd,

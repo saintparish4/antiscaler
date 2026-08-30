@@ -64,8 +64,31 @@ function buildRemoteAdapter(
 	});
 }
 
+export interface CreateContextOptions {
+	/**
+	 * Compute the git-diff scoping (`packageScopes`, `affectedPackages`,
+	 * `changedFiles`) and the lint-only critical-path check. Default true.
+	 *
+	 * Commands that never run a task and never render provenance — `env`,
+	 * `check`, `insight` — pass false, which drops two git subprocesses and a
+	 * trace load from their startup. Anything consuming `packageScopes`, or
+	 * rendering why a task ran, must leave it on.
+	 */
+	scope?: boolean;
+}
+
+const EMPTY_PACKAGE_GRAPH = {
+	packages: [] as Array<{
+		name: string;
+		dir: string;
+		manifest: { name: string };
+	}>,
+	edges: new Map<string, ReadonlySet<string>>(),
+};
+
 export async function createContext(
 	cwd: string = process.cwd(),
+	options: CreateContextOptions = {},
 ): Promise<LinkContext> {
 	// Detect PM/runtime/framework once; reuse throughout context construction.
 	const [rawConfig, { pm, runtime, framework }] = await Promise.all([
@@ -73,17 +96,43 @@ export async function createContext(
 		detectProject(cwd),
 	]);
 
-	let config = rawConfig;
+	const workspaceEnabled = rawConfig.workspace?.enabled === true;
+	const scopeEnabled =
+		options.scope !== false && rawConfig.git?.enabled !== false;
 
-	let pkgGraph: Awaited<ReturnType<typeof loadPackageGraph>> | undefined;
-	if (config.workspace?.enabled) {
-		pkgGraph = await loadPackageGraph(cwd);
+	// Both are started before either is awaited: the git diff needs only cwd
+	// and the base ref, so it has no reason to queue behind the workspace scan.
+	// A workspace-enabled load must still surface its failure, while the
+	// scoping path treats a missing graph as "no packages" and skips the
+	// optimization.
+	const packageGraphPromise = workspaceEnabled
+		? loadPackageGraph(cwd)
+		: scopeEnabled
+			? loadPackageGraph(cwd).catch(() => EMPTY_PACKAGE_GRAPH)
+			: undefined;
+	// Resolved in two steps rather than via getChangedPackages so the file
+	// list survives for provenance — that helper discards it internally.
+	const changedFilesPromise = scopeEnabled
+		? getChangedFiles(
+				rawConfig.git?.baseRef === undefined
+					? { cwd }
+					: { cwd, baseRef: rawConfig.git.baseRef },
+			)
+		: undefined;
+
+	const [pkgGraph, gitFiles] = await Promise.all([
+		packageGraphPromise,
+		changedFilesPromise,
+	]);
+
+	let config = rawConfig;
+	if (workspaceEnabled && pkgGraph !== undefined) {
 		config = {
 			...config,
 			tasks: tasksFromPackageGraph(
 				pkgGraph,
 				config.tasks,
-				config.workspace.scripts,
+				config.workspace?.scripts,
 				pm.name,
 			),
 		};
@@ -92,31 +141,14 @@ export async function createContext(
 	let packageScopes: string[] | undefined;
 	let affectedPackages: ReadonlySet<string> | undefined;
 	let changedFiles: string[] | undefined;
-	if (config.git?.enabled !== false) {
-		const graph =
-			pkgGraph ??
-			(await loadPackageGraph(cwd).catch(() => ({
-				packages: [] as Array<{
-					name: string;
-					dir: string;
-					manifest: { name: string };
-				}>,
-				edges: new Map<string, ReadonlySet<string>>(),
-			})));
-		// Resolved in two steps rather than via getChangedPackages so the file
-		// list survives for provenance — that helper discards it internally.
-		const files = await getChangedFiles(
-			config.git?.baseRef === undefined
-				? { cwd }
-				: { cwd, baseRef: config.git.baseRef },
-		);
-		if (files !== null) changedFiles = files;
-		const changed =
-			files === null ? null : changedFilesToPackages(files, graph, cwd);
-		// null  -> git unavailable; skip optimization
+	// null/undefined -> git unavailable or scoping skipped; no optimization.
+	if (gitFiles != null) {
+		changedFiles = gitFiles;
+		const graph = pkgGraph ?? EMPTY_PACKAGE_GRAPH;
+		const changed = changedFilesToPackages(gitFiles, graph, cwd);
 		// empty -> no packages matched (single-pkg repo or no changes yet);
 		//          skip filtering to avoid hashing zero files
-		if (changed !== null && changed.size > 0) {
+		if (changed.size > 0) {
 			// Cascade: a package is affected if it changed directly OR if any
 			// package it depends on changed (transitively).
 			const affected = computeAffectedPackages(changed, graph);
@@ -128,22 +160,29 @@ export async function createContext(
 	}
 
 	// Both a trace and a changed-file list are required to prove a change is
-	// non-critical. Without either, the safe answer is to run everything —
+	// non-critical. Without either, the safe answer is to run everything --
 	// this optimization must never skip work on an unproven assumption.
 	let lintOnly = false;
 	const perf = config.performance;
-	if (perf?.lintOnlyForNonCritical && (perf.criticalPaths?.length ?? 0) > 0) {
+	if (
+		options.scope !== false &&
+		perf?.lintOnlyForNonCritical &&
+		(perf.criticalPaths?.length ?? 0) > 0
+	) {
 		const trace = await loadTrace(cwd, "last").catch(() => null);
 		if (trace !== null) {
-			const changedFiles = await getChangedFiles({
-				cwd,
-				...(config.git?.baseRef !== undefined
-					? { baseRef: config.git.baseRef }
-					: {}),
-			}).catch(() => null);
-			if (changedFiles !== null) {
+			// Reuse the diff already in hand instead of spawning git twice.
+			const criticalFiles =
+				changedFiles ??
+				(await getChangedFiles({
+					cwd,
+					...(config.git?.baseRef !== undefined
+						? { baseRef: config.git.baseRef }
+						: {}),
+				}).catch(() => null));
+			if (criticalFiles !== null) {
 				lintOnly = !isCriticalChange(
-					changedFiles,
+					criticalFiles,
 					trace,
 					perf.criticalPaths ?? [],
 				);
