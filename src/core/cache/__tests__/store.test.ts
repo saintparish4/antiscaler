@@ -3,12 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { CacheError } from "../../errors.js";
-import {
-	readCache,
-	readCacheSync,
-	writeCache,
-	writeCacheSync,
-} from "../store.js";
+import { readCache, writeCache, writeCacheSync } from "../store.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
@@ -86,24 +81,17 @@ describe("writeCache", () => {
 	});
 });
 
-describe("readCacheSync / writeCacheSync", () => {
-	it("round-trip works synchronously", () => {
+describe("writeCacheSync", () => {
+	it("round-trip works synchronously", async () => {
 		const dir = path.join(makeTmpDir(), "sync-cache");
 		writeCacheSync(dir, { tasks: { x: { lastRun: 99 } } });
-		const result = readCacheSync(dir);
+		const result = await readCache(dir);
 		expect(result.tasks["x"]?.lastRun).toBe(99);
 	});
 
-	it("readCacheSync returns empty on missing dir", () => {
-		const dir = path.join(makeTmpDir(), "nope");
-		const result = readCacheSync(dir);
-		expect(result).toEqual({ tasks: {} });
-	});
-
-	it("writeCacheSync creates directory recursively", () => {
+	it("creates directory recursively", async () => {
 		const dir = path.join(makeTmpDir(), "a", "b", "c");
 		writeCacheSync(dir, { tasks: {} });
-		const result = readCacheSync(dir);
-		expect(result).toEqual({ tasks: {} });
+		expect(await readCache(dir)).toEqual({ tasks: {} });
 	});
 });

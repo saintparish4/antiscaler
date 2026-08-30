@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CacheError } from "../errors.js";
@@ -79,22 +79,4 @@ export function evictStaleEntries(
 		}
 	}
 	return { tasks };
-}
-
-/**
- * Synchronous variant kept symmetric with writeCacheSync. Used only by
- * code paths that cannot be async (currently: none -- reserved).
- */
-export function readCacheSync(cacheDir: string): CacheFile {
-	const filePath = path.join(cacheDir, CACHE_FILENAME);
-	try {
-		const raw = readFileSync(filePath, "utf8");
-		return JSON.parse(raw) as CacheFile;
-	} catch (err) {
-		if ((err as NodeJS.ErrnoException).code === "ENOENT") return { tasks: {} };
-		throw new CacheError(
-			`Failed to read cache at "${filePath}": ${String(err)}`,
-			{ cause: err },
-		);
-	}
 }

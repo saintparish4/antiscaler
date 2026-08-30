@@ -42,11 +42,12 @@ export async function loadPackageGraph(cwd: string): Promise<PackageGraph> {
 		absolute: true,
 	});
 
-	const packages: WorkspacePackage[] = [];
-	for (const dir of dirs.sort()) {
-		const pkg = await readPackage(dir);
-		if (pkg) packages.push(pkg);
-	}
+	// Manifest reads are independent, and this runs inside createContext() on
+	// every command — reading them serially made startup an O(packages)
+	// latency chain. Mapping over the sorted array keeps the order stable.
+	const packages = (await Promise.all(dirs.sort().map(readPackage))).filter(
+		(pkg): pkg is WorkspacePackage => pkg !== null,
+	);
 
 	const byName = new Map(packages.map((p) => [p.manifest.name, p]));
 	const edges = new Map<string, Set<string>>();
@@ -67,29 +68,58 @@ export async function loadPackageGraph(cwd: string): Promise<PackageGraph> {
 }
 
 /**
- * Whether `filePath` lives inside `dir`.
+ * Directory → owning package, built once per graph.
  *
- * Deliberately not a `startsWith` prefix test. `loadPackageGraph` gets its
- * directories from fast-glob, which returns POSIX-separated paths on every
- * host, while the paths being matched against them come from git, a tracer,
- * or `path.join` — native, so backslash-separated on Windows. The two never
- * share a textual prefix there. `path.relative` normalizes both sides, and it
- * also stops `packages/web` from swallowing `packages/website`.
+ * Keyed on graph identity because a PackageGraph is immutable once built, and
+ * held weakly so a graph going out of scope takes its index with it. The
+ * callers (`changedFilesToPackages`, the trace loaders) all resolve every file
+ * in a diff or trace, which made the previous linear scan O(files × packages).
  */
-export function isInsideDirectory(dir: string, filePath: string): boolean {
-	const relative = path.relative(dir, filePath);
-	return !relative.startsWith("..") && !path.isAbsolute(relative);
+const ownersByGraph = new WeakMap<
+	PackageGraph,
+	Map<string, WorkspacePackage>
+>();
+
+function ownersOf(graph: PackageGraph): Map<string, WorkspacePackage> {
+	let owners = ownersByGraph.get(graph);
+	if (owners === undefined) {
+		owners = new Map();
+		// path.resolve normalizes separators, which matters because package
+		// dirs come from fast-glob (POSIX on every host) while the paths looked
+		// up come from git or path.join (native).
+		for (const pkg of graph.packages) {
+			const dir = path.resolve(pkg.dir);
+			// Two packages claiming one directory is malformed input; the first
+			// listed wins so the attribution stays deterministic.
+			if (!owners.has(dir)) owners.set(dir, pkg);
+		}
+		ownersByGraph.set(graph, owners);
+	}
+	return owners;
 }
 
-/** The workspace package owning `filePath`, or null if none does. */
+/**
+ * The workspace package owning `filePath`, or null if none does.
+ *
+ * Walks the path's own directories upward, so the cost is bounded by path
+ * depth rather than package count, and the innermost package wins — a file in
+ * a package nested inside another belongs to the nested one.
+ */
 export function packageForFile(
 	filePath: string,
 	graph: PackageGraph,
 ): WorkspacePackage | null {
-	for (const pkg of graph.packages) {
-		if (isInsideDirectory(pkg.dir, filePath)) return pkg;
+	const owners = ownersOf(graph);
+	if (owners.size === 0) return null;
+
+	let current = path.resolve(filePath);
+	while (true) {
+		const owner = owners.get(current);
+		if (owner !== undefined) return owner;
+		const parent = path.dirname(current);
+		if (parent === current) return null;
+		current = parent;
 	}
-	return null;
 }
 
 /**
@@ -227,8 +257,9 @@ async function readWorkspaceGlobs(cwd: string): Promise<string[]> {
 
 async function readPackage(dir: string): Promise<WorkspacePackage | null> {
 	const manifestPath = path.join(dir, "package.json");
-	if (!(await fileExists(manifestPath))) return null;
 	try {
+		// No stat first: a missing manifest throws ENOENT here anyway, and the
+		// extra syscall was paid once per candidate directory.
 		const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 		if (!manifest?.name) return null;
 		return { name: manifest.name, dir, manifest };
