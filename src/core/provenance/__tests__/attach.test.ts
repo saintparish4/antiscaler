@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TaskProvenance } from "../../../types/index.js";
-import { ConfigError, LinkError, TaskExecutionError } from "../../errors.js";
+import { ConfigError, LinkctlError, TaskExecutionError } from "../../errors.js";
 import { attachProvenance } from "../attach.js";
 
 function provenanceFor(taskId: string): TaskProvenance {
@@ -29,7 +29,7 @@ describe("attachProvenance", () => {
 	});
 
 	it("test_preserves_the_original_error_identity", () => {
-		// Wrapping a LinkError would bury its code and hint, which the CLI's
+		// Wrapping a LinkctlError would bury its code and hint, which the CLI's
 		// existing failure output already renders.
 		const original = new TaskExecutionError("web:test", 3);
 		const failure = attachProvenance(original, "web:test", mapOf());
@@ -38,7 +38,7 @@ describe("attachProvenance", () => {
 		expect(failure.code).toBe("TASK_EXECUTION_ERROR");
 	});
 
-	it("test_wraps_a_non_link_error_as_task_failure", () => {
+	it("test_wraps_a_non_linkctl_error_as_task_failure", () => {
 		// An injected executor can throw anything; a failing task command is a
 		// task failure, not an internal bug.
 		const failure = attachProvenance(
@@ -48,7 +48,7 @@ describe("attachProvenance", () => {
 		);
 
 		expect(failure).toBeInstanceOf(TaskExecutionError);
-		expect(failure).toBeInstanceOf(LinkError);
+		expect(failure).toBeInstanceOf(LinkctlError);
 	});
 
 	it("test_wrapped_error_keeps_the_original_as_cause", () => {
@@ -110,9 +110,9 @@ describe("attachProvenance", () => {
 		expect(failure.provenance?.taskId).toBe("web:test");
 	});
 
-	it("test_annotates_a_non_task_link_error_it_is_handed", () => {
+	it("test_annotates_a_non_task_linkctl_error_it_is_handed", () => {
 		// The runner only calls this around task execution, but the helper
-		// should not silently drop provenance for an unexpected LinkError kind.
+		// should not silently drop provenance for an unexpected LinkctlError kind.
 		const entry = provenanceFor("web:test");
 		const failure = attachProvenance(
 			new ConfigError("bad config"),

@@ -2,10 +2,10 @@
  * @module
  * Next.js webpack plugin for module-level tracing. Consumed by the user as:
  *
- *   const { linkNextPlugin } = require("link/tracer");
+ *   const { linkctlNextPlugin } = require("link/tracer");
  *   module.exports = {
  *     webpack(config) {
- *       config.plugins.push(linkNextPlugin());
+ *       config.plugins.push(linkctlNextPlugin());
  *       return config;
  *     },
  *   };
@@ -89,7 +89,7 @@ function deriveRoutesFromFiles(
 	return result;
 }
 
-export function linkNextPlugin(options: TracerOptions = {}) {
+export function linkctlNextPlugin(options: TracerOptions = {}) {
 	const sessionId = options.sessionId ?? newSessionId();
 	const startedAt = Date.now();
 	const seen = new Set<string>();
@@ -97,7 +97,7 @@ export function linkNextPlugin(options: TracerOptions = {}) {
 
 	return {
 		apply(compiler: WebpackCompiler) {
-			compiler.hooks.afterCompile.tap("LinkTracer", (compilation) => {
+			compiler.hooks.afterCompile.tap("LinkctlTracer", (compilation) => {
 				for (const m of compilation.modules) {
 					if (m.resource && !m.resource.includes("node_modules")) {
 						seen.add(m.resource);
@@ -123,7 +123,7 @@ export function linkNextPlugin(options: TracerOptions = {}) {
 				}
 			});
 
-			compiler.hooks.done.tapPromise("LinkTracer", async () => {
+			compiler.hooks.done.tapPromise("LinkctlTracer", async () => {
 				const routes =
 					entrypointModules.size > 0
 						? [...entrypointModules.entries()].map(([path, files]) => ({

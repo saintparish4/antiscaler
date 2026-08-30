@@ -6,7 +6,7 @@ import { detectFramework } from "../framework.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "link-fw-det-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "linkctl-fw-det-"));
 	tmpDirs.push(dir);
 	return dir;
 }

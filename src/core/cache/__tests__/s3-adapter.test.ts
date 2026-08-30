@@ -79,7 +79,7 @@ describe("S3CacheAdapter.has()", () => {
 		const cmd = mockSend.mock.calls[0]?.[0] as {
 			input?: { Key?: string };
 		};
-		expect(cmd?.input?.Key).toBe("link/hashval");
+		expect(cmd?.input?.Key).toBe("linkctl/hashval");
 	});
 
 	it("uses custom prefix in object key", async () => {

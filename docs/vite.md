@@ -1,11 +1,11 @@
 # Vite setup
 
-Link provides a Vite plugin that records which modules and routes are loaded during builds and dev runs — the same trace data used by `link trace analyze` and the lint-only fast path.
+linkctl provides a Vite plugin that records which modules and routes are loaded during builds and dev runs — the same trace data used by `linkctl trace analyze` and the lint-only fast path.
 
 ## 1. Install
 
 ```bash
-npm install -D link
+npm install -D linkctl
 ```
 
 ## 2. Add the Vite plugin
@@ -13,35 +13,35 @@ npm install -D link
 ```javascript
 // vite.config.js (or vite.config.ts)
 import { defineConfig } from "vite";
-import { linkVitePlugin } from "link/tracer";
+import { linkctlVitePlugin } from "linkctl/tracer";
 
 export default defineConfig({
   plugins: [
-    linkVitePlugin(),
+    linkctlVitePlugin(),
   ],
 });
 ```
 
-The plugin hooks into `generateBundle` to record entry chunks and their associated routes, writing sessions to `.link/traces/<sessionId>.json`.
+The plugin hooks into `generateBundle` to record entry chunks and their associated routes, writing sessions to `.linkctl/traces/<sessionId>.json`.
 
 ## 3. Record a trace session
 
 ```bash
-npx link trace
+npx linkctl trace
 ```
 
 Starts your Vite dev server with tracing active. Navigate through the routes you want to mark as critical, then stop the server.
 
 ```bash
 # Inspect the most recent session
-npx link trace analyze
+npx linkctl trace analyze
 ```
 
 ## 4. Minimal config
 
 ```typescript
-// link.config.ts
-import { defineConfig } from "link";
+// linkctl.config.ts
+import { defineConfig } from "linkctl";
 
 export default defineConfig({
   tasks: {
@@ -77,4 +77,4 @@ See [nextjs.md](./nextjs.md) for a detailed walkthrough of this feature; the beh
 ## Notes
 
 - Vite route detection maps entry file paths to URLs using a `pages/`, `routes/`, or `views/` directory convention (with an optional `src/` prefix). Entry files outside these directories are recorded in the module list but are not assigned a route.
-- Add `.link/` to `.gitignore` to avoid committing trace sessions.
+- Add `.linkctl/` to `.gitignore` to avoid committing trace sessions.

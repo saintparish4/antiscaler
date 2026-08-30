@@ -3,12 +3,12 @@ import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { linkNextPlugin } from "../next-plugin.js";
+import { linkctlNextPlugin } from "../next-plugin.js";
 import type { TraceFile } from "../types.js";
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {
-	const dir = mkdtempSync(path.join(tmpdir(), "link-next-p-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "linkctl-next-p-"));
 	tmpDirs.push(dir);
 	return dir;
 }
@@ -18,7 +18,9 @@ afterEach(() => {
 });
 
 // Derive the compiler type from the plugin without exporting internals.
-type PluginCompiler = Parameters<ReturnType<typeof linkNextPlugin>["apply"]>[0];
+type PluginCompiler = Parameters<
+	ReturnType<typeof linkctlNextPlugin>["apply"]
+>[0];
 
 function mockCompiler(context: string) {
 	const afterCompileHooks: Array<(compilation: unknown) => void> = [];
@@ -55,11 +57,11 @@ function mockCompiler(context: string) {
 	};
 }
 
-describe("linkNextPlugin", () => {
+describe("linkctlNextPlugin", () => {
 	it("registers afterCompile and done hooks", () => {
 		const cwd = makeTmpDir();
 		const { compiler } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({ outDir: "traces" });
+		const plugin = linkctlNextPlugin({ outDir: "traces" });
 		plugin.apply(compiler);
 		// Hooks should have been tapped
 		expect(true).toBe(true); // no throw = taps registered
@@ -68,7 +70,7 @@ describe("linkNextPlugin", () => {
 	it("collects modules from compilation, skipping node_modules", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({
+		const plugin = linkctlNextPlugin({
 			sessionId: "nx1",
 			outDir: "traces",
 		});
@@ -95,7 +97,7 @@ describe("linkNextPlugin", () => {
 	it("writes sorted modules and framework='next'", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({
+		const plugin = linkctlNextPlugin({
 			sessionId: "nx2",
 			outDir: "traces",
 		});
@@ -115,7 +117,7 @@ describe("linkNextPlugin", () => {
 	it("options.sessionId overrides generated id", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({
+		const plugin = linkctlNextPlugin({
 			sessionId: "custom-id",
 			outDir: "traces",
 		});
@@ -132,7 +134,7 @@ describe("linkNextPlugin", () => {
 	it("multiple compilations accumulate modules (watch mode)", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({
+		const plugin = linkctlNextPlugin({
 			sessionId: "nx3",
 			outDir: "traces",
 		});
@@ -152,7 +154,7 @@ describe("linkNextPlugin", () => {
 	it("deduplicates modules seen across compilations", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({
+		const plugin = linkctlNextPlugin({
 			sessionId: "nx4",
 			outDir: "traces",
 		});
@@ -172,7 +174,7 @@ describe("linkNextPlugin", () => {
 	it("uses compiler.context as cwd for writeTrace", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({
+		const plugin = linkctlNextPlugin({
 			sessionId: "nx5",
 			outDir: "my-traces",
 		});
@@ -186,7 +188,7 @@ describe("linkNextPlugin", () => {
 	it("derives routes from page file paths when no entrypoints provided", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({ sessionId: "nx6", outDir: "traces" });
+		const plugin = linkctlNextPlugin({ sessionId: "nx6", outDir: "traces" });
 		plugin.apply(compiler);
 
 		simulateCompilation([
@@ -212,7 +214,7 @@ describe("linkNextPlugin", () => {
 	it("derives routes for app-router page.tsx files", () => {
 		const cwd = makeTmpDir();
 		const { compiler, simulateCompilation, simulateDone } = mockCompiler(cwd);
-		const plugin = linkNextPlugin({ sessionId: "nx7", outDir: "traces" });
+		const plugin = linkctlNextPlugin({ sessionId: "nx7", outDir: "traces" });
 		plugin.apply(compiler);
 
 		simulateCompilation([

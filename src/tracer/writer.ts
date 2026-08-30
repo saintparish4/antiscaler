@@ -8,7 +8,7 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { TraceFile } from "./types.js";
 
-const DEFAULT_DIR = ".link/traces";
+const DEFAULT_DIR = ".linkctl/traces";
 
 export async function writeTrace(
 	cwd: string,

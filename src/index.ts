@@ -1,11 +1,11 @@
 /**
- * The supported public API surface of link.
+ * The supported public API surface of linkctl.
  *
  * Everything re-exported from this module is covered by the project's semver
  * stability guarantee as of v1.0.0: no breaking changes in a minor or patch
- * release. Symbols reachable through deep import paths (`link/dist/...`)
+ * release. Symbols reachable through deep import paths (`linkctl/dist/...`)
  * are `@internal` and may change at any time — depend only on what is exported
- * here and from `link/tracer`.
+ * here and from `linkctl/tracer`.
  *
  * @packageDocumentation
  */
@@ -16,7 +16,7 @@
  *
  * @example
  * ```typescript
- * import { defineConfig } from "link";
+ * import { defineConfig } from "linkctl";
  *
  * export default defineConfig({
  *   tasks: {
@@ -30,19 +30,19 @@
 export { defineConfig } from "./core/config/loader.js";
 /**
  * The raw config shape accepted by `defineConfig`. All fields are optional;
- * Link applies defaults for anything not specified.
+ * Linkctl applies defaults for anything not specified.
  *
  * @public
  */
 /**
- * The `cache` sub-object of `ResolvedLinkConfig`, with all defaults
+ * The `cache` sub-object of `ResolvedLinkctlConfig`, with all defaults
  * applied.
  *
  * @public
  */
 /**
  * The fully-validated config with every default filled in. This is the type
- * of the config object that Link uses internally after loading.
+ * of the config object that Linkctl uses internally after loading.
  *
  * @public
  */
@@ -52,7 +52,7 @@ export { defineConfig } from "./core/config/loader.js";
  * @public
  */
 /**
- * A single task entry inside `LinkConfig["tasks"]`.
+ * A single task entry inside `LinkctlConfig["tasks"]`.
  *
  * @example
  * ```typescript
@@ -67,8 +67,8 @@ export { defineConfig } from "./core/config/loader.js";
  */
 export type {
 	CacheConfig,
-	LinkConfig,
-	ResolvedLinkConfig,
+	LinkctlConfig,
+	ResolvedLinkctlConfig,
 	Strategy,
 	TaskConfig,
 } from "./types/index.js";

@@ -24,13 +24,13 @@ import { PluginRegistry } from "../core/plugins/registry.js";
 import { buildProvenance } from "../core/provenance/capture.js";
 import { isCriticalChange } from "../core/scope/critical-path.js";
 import { loadTrace } from "../core/scope/trace-loader.js";
-import type { LinkContext, ResolvedLinkConfig } from "../types/index.js";
+import type { LinkctlContext, ResolvedLinkctlConfig } from "../types/index.js";
 import { reportPluginError } from "./render/plugin-errors.js";
 import { errorLines } from "./render/writer.js";
 import { getPrinter } from "./visuals/printer.js";
 
 function buildRemoteAdapter(
-	config: ResolvedLinkConfig,
+	config: ResolvedLinkctlConfig,
 ): RemoteCacheAdapter | undefined {
 	const remote = config.cache.remote;
 	if (remote === undefined) return undefined;
@@ -89,7 +89,7 @@ const EMPTY_PACKAGE_GRAPH = {
 export async function createContext(
 	cwd: string = process.cwd(),
 	options: CreateContextOptions = {},
-): Promise<LinkContext> {
+): Promise<LinkctlContext> {
 	// Detect PM/runtime/framework once; reuse throughout context construction.
 	const [rawConfig, { pm, runtime, framework }] = await Promise.all([
 		loadConfig(cwd),
@@ -189,7 +189,7 @@ export async function createContext(
 				if (lintOnly) {
 					errorLines(
 						getPrinter(),
-						"[link] No critical-path changes detected — running lint tasks only",
+						"[linkctl] No critical-path changes detected — running lint tasks only",
 					);
 				}
 			}
@@ -240,13 +240,13 @@ export async function createContext(
 }
 
 /**
- * Lifts an LinkContext into the flat RunOptions shape that the runner
+ * Lifts an LinkctlContext into the flat RunOptions shape that the runner
  * expects. Every CLI command that calls runTasksWithDeps should go through
  * this helper -- it is the single source of truth for context-to-options
  * translation.
  */
 export function toRunOptions(
-	ctx: LinkContext,
+	ctx: LinkctlContext,
 	overrides: { concurrency?: number } = {},
 ): RunOptions {
 	const schedulerEnabled = ctx.config.scheduler?.policy !== undefined;

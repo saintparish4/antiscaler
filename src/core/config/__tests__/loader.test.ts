@@ -1,23 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { ConfigError } from "../../errors.js";
-import { linkConfigSchema } from "../schema.js";
+import { linkctlConfigSchema } from "../schema.js";
 
 // Tests parse the Zod schema directly so they don't need the filesystem/jiti
 // loadConfig() integration is covered by the schema round-trips below
 
-describe("linkConfigSchema", () => {
+describe("linkctlConfigSchema", () => {
 	it("no config: returns all defaults", () => {
-		const result = linkConfigSchema.parse({});
+		const result = linkctlConfigSchema.parse({});
 		expect(result.strategy).toBe("adaptive");
 		expect(result.cache.mode).toBe("content");
-		expect(result.cache.directory).toBe(".link/cache");
+		expect(result.cache.directory).toBe(".linkctl/cache");
 		expect(result.tasks).toEqual({});
 	});
 
 	it("partial override: only strategy set, rest gets defaults", () => {
-		const result = linkConfigSchema.parse({ strategy: "strict" });
+		const result = linkctlConfigSchema.parse({ strategy: "strict" });
 		expect(result.strategy).toBe("strict");
-		expect(result.cache.directory).toBe(".link/cache");
+		expect(result.cache.directory).toBe(".linkctl/cache");
 		expect(result.tasks).toEqual({});
 	});
 
@@ -30,7 +30,7 @@ describe("linkConfigSchema", () => {
 				lint: { command: "eslint . " },
 			},
 		};
-		const result = linkConfigSchema.parse(input);
+		const result = linkctlConfigSchema.parse(input);
 		const buildKey = "build" as const;
 		expect(result.strategy).toBe("strict");
 		expect(result.cache.directory).toBe(".custom/cache");
@@ -39,7 +39,7 @@ describe("linkConfigSchema", () => {
 	});
 
 	it("invalid strategy: throws with useful message (wrapped as ConfigError)", () => {
-		const parsed = linkConfigSchema.safeParse({ strategy: "turbo" });
+		const parsed = linkctlConfigSchema.safeParse({ strategy: "turbo" });
 		expect(parsed.success).toBe(false);
 		if (!parsed.success) {
 			const messages = parsed.error.issues.map((e) => e.message).join(" ");
@@ -48,12 +48,12 @@ describe("linkConfigSchema", () => {
 		// Also verify ConfigError wrapping works
 		expect(() => {
 			if (!parsed.success)
-				throw new ConfigError("Invalid link config: strategy");
+				throw new ConfigError("Invalid linkctl config: strategy");
 		}).toThrow(ConfigError);
 	});
 
 	it("tasks with dependsOn: references are preserved correctly", () => {
-		const result = linkConfigSchema.parse({
+		const result = linkctlConfigSchema.parse({
 			tasks: {
 				build: { dependsOn: ["test", "lint"] },
 				test: {},

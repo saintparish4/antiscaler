@@ -4,14 +4,14 @@
 
 **Cause:** The `inputs` array for a task is empty or the glob doesn't match any files.
 
-**Fix:** Verify the globs match your source files. Link uses `fast-glob` internally and ignores `node_modules/`, `.git/`, and `.link/`. Use `find` to approximate the same check:
+**Fix:** Verify the globs match your source files. linkctl uses `fast-glob` internally and ignores `node_modules/`, `.git/`, and `.linkctl/`. Use `find` to approximate the same check:
 
 ```bash
 # macOS / Linux
 find src -type f
 
-# The exact pattern link uses (excludes node_modules, .git, .link):
-find . -path ./node_modules -prune -o -path ./.git -prune -o -path ./.link -prune -o -name '*.ts' -print
+# The exact pattern linkctl uses (excludes node_modules, .git, .linkctl):
+find . -path ./node_modules -prune -o -path ./.git -prune -o -path ./.linkctl -prune -o -name '*.ts' -print
 ```
 
 Then check your config:
@@ -28,14 +28,14 @@ An empty `inputs: []` means the task never hashes — it will always be a cache 
 
 ---
 
-## 2. `link: command not found`
+## 2. `linkctl: command not found`
 
-**Cause:** The binary isn't on PATH. Link is installed as a local dev dependency.
+**Cause:** The binary isn't on PATH. linkctl is installed as a local dev dependency.
 
 **Fix:** Use `npx` or add a script to `package.json`:
 
 ```bash
-npx link build
+npx linkctl build
 ```
 
 Or add to `package.json`:
@@ -43,7 +43,7 @@ Or add to `package.json`:
 ```json
 {
   "scripts": {
-    "build:cached": "link build"
+    "build:cached": "linkctl build"
   }
 }
 ```
@@ -52,11 +52,11 @@ Or add to `package.json`:
 
 ## 3. Config file not found
 
-**Cause:** Link looks for `link.config.ts`, `link.config.js`, or `link.config.mjs` in the current working directory.
+**Cause:** linkctl looks for `linkctl.config.ts`, `linkctl.config.js`, or `linkctl.config.mjs` in the current working directory.
 
-**Fix:** Create the config with `npx link init`, or check you're running from the project root.
+**Fix:** Create the config with `npx linkctl init`, or check you're running from the project root.
 
-Note: the config filename is `link.config.ts` (no `r` at the end), while the package name and CLI are `link`.
+Note: the config filename is `linkctl.config.ts` (no `r` at the end), while the package name and CLI are `linkctl`.
 
 ---
 
@@ -72,12 +72,12 @@ workspace: {
 }
 ```
 
-Link looks for:
+linkctl looks for:
 - `pnpm-workspace.yaml` (pnpm)
 - `package.json` `workspaces` field (npm / Yarn)
 - `tsconfig.json` project references
 
-Run `npx link env` to see what was detected.
+Run `npx linkctl env` to see what was detected.
 
 ---
 
@@ -94,7 +94,7 @@ git: {
 },
 ```
 
-Run `git diff --name-only origin/main` manually to verify the diff is what you expect — this is the exact command link runs internally with that `baseRef`.
+Run `git diff --name-only origin/main` manually to verify the diff is what you expect — this is the exact command linkctl runs internally with that `baseRef`.
 
 ---
 
@@ -102,7 +102,7 @@ Run `git diff --name-only origin/main` manually to verify the diff is what you e
 
 **Cause:** The package's `package.json` doesn't declare the changed package as a dependency, so the cascade doesn't reach it.
 
-**Fix:** Ensure the dependent package lists the changed package in `dependencies` or `devDependencies` in its own `package.json`. Link's cascade walks workspace dependency edges, not just `dependsOn` in the task graph.
+**Fix:** Ensure the dependent package lists the changed package in `dependencies` or `devDependencies` in its own `package.json`. linkctl's cascade walks workspace dependency edges, not just `dependsOn` in the task graph.
 
 ---
 
@@ -116,11 +116,11 @@ Run `git diff --name-only origin/main` manually to verify the diff is what you e
 - Line endings are consistent (`git config core.autocrlf`)
 - The remote backend is reachable (`curl -I <url>/<any-hash>` should return 404, not a network error)
 
-Run `npx link doctor` to check for obvious config issues.
+Run `npx linkctl doctor` to check for obvious config issues.
 
 ---
 
-## 8. `link doctor` reports a validation error
+## 8. `linkctl doctor` reports a validation error
 
 **Cause:** The config failed Zod validation, usually due to an unknown task referenced in `dependsOn` or a typo in a field name.
 
@@ -150,20 +150,20 @@ Check that every task name in `dependsOn` matches a key in `tasks`.
    ```
 2. Record a trace session if none exists:
    ```bash
-   npx link trace
+   npx linkctl trace
    ```
-3. Run `npx link doctor` — it warns if `criticalPaths` is configured but no trace sessions exist.
+3. Run `npx linkctl doctor` — it warns if `criticalPaths` is configured but no trace sessions exist.
 
 ---
 
 ## 10. `pr replay` prints "No trace session found"
 
-**Cause:** No trace sessions have been recorded under `.link/traces/`.
+**Cause:** No trace sessions have been recorded under `.linkctl/traces/`.
 
 **Fix:** Record a session first:
 
 ```bash
-npx link trace
+npx linkctl trace
 ```
 
 Then re-run `pr replay`. If you're in CI and don't have a trace session, either commit a recorded session to the repo or skip `pr replay` (the `pr check` command works without traces).
@@ -172,7 +172,7 @@ Then re-run `pr replay`. If you're in CI and don't have a trace session, either 
 
 ## 11. A failure prints "ran because:" — what is it telling me?
 
-When a task fails, Link adds a short block explaining why that task was selected to run:
+When a task fails, linkctl adds a short block explaining why that task was selected to run:
 
 ```
 [TASK_EXECUTION_ERROR] Task "web:build" failed with exit code 1
@@ -200,9 +200,9 @@ The block appears on stderr, only on failure, and only for errors belonging to a
 
 ## Still stuck?
 
-Run `npx link doctor` — it checks the most common issues automatically. If the problem persists, open an issue at [github.com/saintparish4/link](https://github.com/saintparish4/link/issues) with the output of:
+Run `npx linkctl doctor` — it checks the most common issues automatically. If the problem persists, open an issue at [github.com/saintparish4/linkctl](https://github.com/saintparish4/linkctl/issues) with the output of:
 
 ```bash
-npx link doctor
-npx link env
+npx linkctl doctor
+npx linkctl env
 ```

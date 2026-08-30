@@ -11,7 +11,7 @@ function build(
 		tasks,
 		graph: buildGraph({
 			strategy: "adaptive",
-			cache: { mode: "content", directory: ".link/cache" },
+			cache: { mode: "content", directory: ".linkctl/cache" },
 			tasks,
 		}),
 		strategy: "adaptive",

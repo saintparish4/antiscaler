@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to link are documented in this file.
+All notable changes to linkctl are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Performance
 
-- **Semantic path (`link diff` / `pr check` / `impact`)** — the AST differ now
+- **Semantic path (`linkctl diff` / `pr check` / `impact`)** — the AST differ now
   reuses one ts-morph `Project` across every file instead of constructing a
   TypeScript compiler host per file, and the blast-radius traversal reads all
   base-ref versions through a single `git cat-file --batch` instead of one
-  `git show` per file, with per-file classification overlapped. `link impact`
+  `git show` per file, with per-file classification overlapped. `linkctl impact`
   over a 10-file diff went from 2.98 s to 0.99 s locally.
 - **Workspace discovery** — package manifests are read in parallel, and file →
   package ownership is resolved through a directory index instead of a linear
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Input hashing** — files are hashed individually and their digests combined
   in path order, so peak memory is one file per worker rather than the total
   size of a task's inputs.
-- **Startup** — `link env` dropped from ~193 ms to ~119 ms. `env`, `check` and
+- **Startup** — `linkctl env` dropped from ~193 ms to ~119 ms. `env`, `check` and
   `insight` no longer compute git scoping they never read, and fast-glob and
   execa are now loaded on demand instead of on the static import path of every
   command.
@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`cache.json` is written atomically.** It went to a temp file that is then
   renamed over the target, so an interrupted run leaves the previous cache
   intact instead of truncated JSON that could only be recovered by deleting
-  `.link/cache/`. `writeCacheSync`, the process-exit safety net, needed this
+  `.linkctl/cache/`. `writeCacheSync`, the process-exit safety net, needed this
   most. The file is also no longer pretty-printed.
 
 ### Removed
@@ -55,9 +55,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `readCacheSync` — reserved but never called. `writeCacheSync` stays; it is
   the process-exit safety net.
 
-- **Project rename** — package name, `bin` command, config filename
-  (`link.config.ts`), and cache directory (`.link/`) all now use the `link`
-  name throughout.
+- **Renamed the project to `linkctl`.** The package, the `bin` command, the
+  config filename (`linkctl.config.ts`), the state directory (`.linkctl/`), the
+  `LINKCTL_*` environment variables, the exported types (`LinkctlConfig`,
+  `LinkctlContext`, `LinkctlError`), the tracer plugins
+  (`linkctlVitePlugin`, `linkctlNextPlugin`) and the default S3 key prefix
+  (`linkctl/`) all use the new name.
+
+  Two reasons, both blocking: `link` on npm belongs to a different, actively
+  published package, and `link` is a POSIX coreutil (`/usr/bin/link`) that a
+  globally installed `link` binary would shadow.
+
+  There is no compatibility shim — nothing shipped under the old name, so
+  `link.config.*` is no longer read. The stale `buildflow.config.json`
+  candidate left over from the previous rename is gone too.
 
 ## [1.1.1] - 2026-07-19
 

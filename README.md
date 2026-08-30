@@ -1,18 +1,18 @@
 <div align="center">
   <a href="https://github.com/saintparish4/link">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="assets/link-wordmark-dark.png">
-      <img src="assets/link-wordmark.png" width="500" height="auto" alt="Link"/>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/linkctl-wordmark-dark.png">
+      <img src="assets/linkctl-wordmark.png" width="500" height="auto" alt="linkctl"/>
     </picture>
   </a>
 </div>
 
-[![npm version](https://img.shields.io/npm/v/link.svg)](https://www.npmjs.com/package/link)
+[![npm version](https://img.shields.io/npm/v/linkctl.svg)](https://www.npmjs.com/package/linkctl)
 [![CI](https://github.com/saintparish4/link/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/link/actions/workflows/ci.yml)
 
-A build orchestrator that skips work you haven't changed — a task DAG, content-based caching, and workspace scoping, driven by `link.config.ts`.
+A build orchestrator that skips work you haven't changed — a task DAG, content-based caching, and workspace scoping, driven by `linkctl.config.ts`.
 
-This README is for working **on** Link. Using it in your own project is documented in [docs/](./docs/getting-started.md).
+This README is for working **on** linkctl. Using it in your own project is documented in [docs/](./docs/getting-started.md).
 
 ---
 
@@ -35,7 +35,7 @@ Optional, only if you touch the matching area:
 
 ```bash
 git clone https://github.com/saintparish4/link.git
-cd link
+cd linkctl
 pnpm install
 pnpm build               # required before the CLI or E2E tests can run
 node dist/cli.js --help  # smoke test
@@ -60,7 +60,7 @@ The default branch is `master`, and it is expected to be lint-clean — if `pnpm
 
 There is no watch build. The loop is `pnpm build && node dist/cli.js <command>`, run against a scratch project or one of the fixture workspaces in `src/__tests__/fixtures/`.
 
-`src/cli/index.ts` registers every command with a dynamic `import()` inside its `action()` callback, deferring execa, jiti, and fast-glob until a command actually runs. That is what keeps `link --help` fast, and it is the one sanctioned exception to the project's prefer-top-level-imports rule — the benchmark job fails if startup regresses past 200 ms.
+`src/cli/index.ts` registers every command with a dynamic `import()` inside its `action()` callback, deferring execa, jiti, and fast-glob until a command actually runs. That is what keeps `linkctl --help` fast, and it is the one sanctioned exception to the project's prefer-top-level-imports rule — the benchmark job fails if startup regresses past 200 ms.
 
 Benchmark methodology and how to reproduce the published numbers: [benchmarks/README.md](./benchmarks/README.md).
 
@@ -91,7 +91,7 @@ Unit tests never shell out — `runTasksWithDeps` takes a `TaskExecutor`, so tes
 
 ## Environment Variables
 
-Link takes no configuration from the environment — that lives in `link.config.ts`. What it reads are standard terminal and CI signals:
+Link takes no configuration from the environment — that lives in `linkctl.config.ts`. What it reads are standard terminal and CI signals:
 
 | Variable | Read by | Effect |
 |---|---|---|
@@ -100,8 +100,8 @@ Link takes no configuration from the environment — that lives in `link.config.
 | `CLICOLOR_FORCE` | `visuals/color.ts` | Same as `FORCE_COLOR`. |
 | `CI` | picocolors, indirectly | Nothing in `src/` reads `CI`. picocolors counts it as color *support*, so CI logs keep color unless `NO_COLOR` is set. Animated progress stops in CI because stderr is not a TTY (`printer.ts:82`), not because of this variable. |
 | `JPY_SESSION_NAME` | `visuals/progress.ts` | Detects a Jupyter session and falls back to line-based output. |
-| `LINK_TEST_NO_CLI_PROGRESS` | `visuals/printer.ts`, `visuals/progress.ts` | Test-only. Suppresses progress bars so concurrent output stays assertable. |
-| `LINK_TRACE` | Set by `link trace` | Exported to the spawned dev process. Nothing in Link reads it back — the tracer plugins are unconditional once installed. |
+| `LINKCTL_TEST_NO_CLI_PROGRESS` | `visuals/printer.ts`, `visuals/progress.ts` | Test-only. Suppresses progress bars so concurrent output stays assertable. |
+| `LINKCTL_TRACE` | Set by `linkctl trace` | Exported to the spawned dev process. Nothing in Link reads it back — the tracer plugins are unconditional once installed. |
 
 Color precedence: `--color <when>` → `--no-color` → `NO_COLOR` → `FORCE_COLOR`/`CLICOLOR_FORCE` → TTY detection. All of it resolves once in `visuals/color.ts:resolveColorChoice()`, applied process-wide by `writeGlobalColorChoice()`; renderers call `getColors()` and never consult the environment themselves. Adding a second color path is the mistake this design exists to prevent.
 
@@ -121,13 +121,13 @@ Layered, dependencies pointing one way: `cli → core → adapters`. Ports are o
 | `src/tracer/` | Webpack and Vite plugins that record module resolution |
 | `src/types/` | Contracts shared across layers |
 
-`tsup` builds three entry points: `dist/index.js` (library API), `dist/cli.js` (the `link` binary), and `dist/tracer.js` (framework plugins).
+`tsup` builds three entry points: `dist/index.js` (library API), `dist/cli.js` (the `linkctl` binary), and `dist/tracer.js` (framework plugins).
 
-The request path for most commands: `cli/context.ts:createContext()` loads config, detects PM/runtime/framework, builds the task DAG, and computes git-diff scoping — then `core/execution:runTasksWithDeps()` walks DAG levels while `core/cache` hashes inputs against `.link/cache/cache.json`.
+The request path for most commands: `cli/context.ts:createContext()` loads config, detects PM/runtime/framework, builds the task DAG, and computes git-diff scoping — then `core/execution:runTasksWithDeps()` walks DAG levels while `core/cache` hashes inputs against `.linkctl/cache/cache.json`.
 
-Along the way `core/provenance` records why each task was selected to run — cache miss, affected by the diff, or never cached. The runner attaches that record to the `LinkError` a failing task throws, and `cli/render/error.ts` prints it under the failure. It explains *selection*, never *cause*; see [docs/troubleshooting.md](./docs/troubleshooting.md) for the output and that distinction.
+Along the way `core/provenance` records why each task was selected to run — cache miss, affected by the diff, or never cached. The runner attaches that record to the `LinkctlError` a failing task throws, and `cli/render/error.ts` prints it under the failure. It explains *selection*, never *cause*; see [docs/troubleshooting.md](./docs/troubleshooting.md) for the output and that distinction.
 
-Two rules to know before your first PR: business logic does not live in command handlers, and `core` never prints or exits — it throws `LinkError` subclasses and lets the CLI top level map them to exit codes (`LinkError` → 1, unexpected → 2). Full detail in [CLAUDE.md](./CLAUDE.md).
+Two rules to know before your first PR: business logic does not live in command handlers, and `core` never prints or exits — it throws `LinkctlError` subclasses and lets the CLI top level map them to exit codes (`LinkctlError` → 1, unexpected → 2). Full detail in [CLAUDE.md](./CLAUDE.md).
 
 Note the naming: `core/progress/reporter.ts` is a *port* — a bare `TaskEvent` interface with no output code. Everything that actually draws lives in `cli/visuals/` (progress, spinners, task events) and `cli/render/` (command output, errors). A file under `core/` never prints, whatever its name suggests.
 
@@ -135,7 +135,7 @@ Note the naming: `core/progress/reporter.ts` is a *port* — a bare `TaskEvent` 
 
 ## Deployment
 
-Link ships as an npm package; there is no server to deploy.
+linkctl ships as an npm package; there is no server to deploy.
 
 ```bash
 pnpm publish            # prepublishOnly runs `pnpm test:all && pnpm build`
@@ -145,7 +145,7 @@ Only `dist/` is published (`files: ["dist"]`). The package exposes `.` and `./tr
 
 Releases are currently **manual** — `.github/workflows/release.yml` has been removed, and `deploy.yml` and `security.yml` are empty placeholders. Before publishing: bump the version, update [CHANGELOG.md](./CHANGELOG.md), and confirm CI is green on `master`.
 
-Everything exported from `link` and `link/tracer` follows [semantic versioning](https://semver.org), so a breaking change to either surface cannot ship in a minor or patch release.
+Everything exported from `linkctl` and `linkctl/tracer` follows [semantic versioning](https://semver.org), so a breaking change to either surface cannot ship in a minor or patch release.
 
 ---
 

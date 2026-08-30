@@ -11,7 +11,7 @@ import {
 const tmpDirs: string[] = [];
 
 const makeTmpDir = () => {
-	const dir = mkdtempSync(path.join(tmpdir(), "link-pg-"));
+	const dir = mkdtempSync(path.join(tmpdir(), "linkctl-pg-"));
 	tmpDirs.push(dir);
 	return dir;
 };

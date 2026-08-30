@@ -1,6 +1,6 @@
 /**
  * @module
- * The checks behind `link check`: every dependency resolves, and every
+ * The checks behind `linkctl check`: every dependency resolves, and every
  * task has a cycle-free path to its dependencies.
  */
 

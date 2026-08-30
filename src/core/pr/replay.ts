@@ -1,6 +1,6 @@
 /**
  * @module
- * `link pr replay` — intersect the files a PR changes with a recorded
+ * `linkctl pr replay` — intersect the files a PR changes with a recorded
  * trace session, answering "which routes did this branch actually touch?".
  */
 

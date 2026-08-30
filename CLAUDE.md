@@ -4,12 +4,12 @@ A general guide for working in a codebase. Fill in **Stack** and **Commands** pe
 
 ## Stack
 
-`link` — an adaptive dev orchestration CLI (task DAG, content caching, runtime detection).
+`linkctl` — an adaptive dev orchestration CLI (task DAG, content caching, runtime detection).
 
 - **Language**: TypeScript, ESM only (`"type": "module"`). Node ≥ 20, pnpm ≥ 10.
-- **Build**: tsup — three entry points: `src/index.ts` (library), `src/cli/index.ts` (`link` binary), `src/tracer/index.ts` (webpack/Vite tracer plugins).
+- **Build**: tsup — three entry points: `src/index.ts` (library), `src/cli/index.ts` (`linkctl` binary), `src/tracer/index.ts` (webpack/Vite tracer plugins).
 - **CLI**: Commander.js.
-- **Key libraries**: zod (config schema and defaults), jiti (loads `link.config.ts` with no build step), execa (process execution), fast-glob (input hashing), ts-morph (semantic change analysis), picocolors, string-argv.
+- **Key libraries**: zod (config schema and defaults), jiti (loads `linkctl.config.ts` with no build step), execa (process execution), fast-glob (input hashing), ts-morph (semantic change analysis), picocolors, string-argv.
 - **Tooling**: Biome (format + lint + import organization), Vitest with v8 coverage, TypeScript (`tsc --noEmit`).
 
 ## Architecture
@@ -19,21 +19,21 @@ Layered, with dependencies pointing one way: `cli → core → adapters`. Interf
 - `src/cli/` — Commander wiring, option parsing, terminal rendering. The user-facing surface.
 - `src/core/` — orchestration logic, grouped by capability (`cache`, `graph`, `execution`, `semantic`, `scope`, `detection`, `plugins`, `history`, `insight`) rather than by technical kind. No `utils/`, `helpers/`, or `services/` buckets.
 - `src/adapters/` — the outside world: `pm/` (npm/pnpm/yarn command builders), `runtimes/` (Node/Bun/Deno detection), `frameworks/` (Next.js/Vite/generic, each wrapped as a plugin via `wrapFrameworkAsPlugin`). One file per implementation.
-- `src/tracer/` — separate `tsup` entry point; webpack (`next-plugin.ts`) and Vite (`vite-plugin.ts`) plugins that intercept module resolution and write session JSON to `.link/traces/`.
+- `src/tracer/` — separate `tsup` entry point; webpack (`next-plugin.ts`) and Vite (`vite-plugin.ts`) plugins that intercept module resolution and write session JSON to `.linkctl/traces/`.
 - `src/types/` — contracts shared across layers.
 
 Rules:
 
 - Business logic must not live in command handlers. A command parses options, calls `createContext()`, delegates to `core`, and renders the result. A command file growing branches and conditionals means the logic belongs in `core`.
-- `core` must not print or exit. It reports through the progress/reporter interface and throws typed errors from `core/errors.ts` (`LinkError` subclasses with a machine-readable `.code` and a user-facing `.hint`); only the CLI top level catches `LinkError` → exit 1, unexpected errors → exit 2.
+- `core` must not print or exit. It reports through the progress/reporter interface and throws typed errors from `core/errors.ts` (`LinkctlError` subclasses with a machine-readable `.code` and a user-facing `.hint`); only the CLI top level catches `LinkctlError` → exit 1, unexpected errors → exit 2.
 - Side effects live at the edges and arrive through injectable interfaces — `runTasksWithDeps` takes a `TaskExecutor`, defaulting to the real one. This is what keeps the suite unit-heavy: unit tests never shell out.
 - Config is loaded once, at one wiring point (`cli/context.ts:createContext()`), which also detects PM/runtime/framework, builds the task DAG, and computes the git-diff `packageScopes`/`affectedPackages` pre-filter. Modules receive what they need instead of re-reading config themselves.
-- `src/cli/index.ts` registers commands with a dynamic `import()` inside each `action()` callback, deferring heavy deps (execa, jiti, fast-glob) until a command actually runs — this is what keeps `link --help` fast. It's a sanctioned exception to "prefer top-level imports"; don't add new lazy imports elsewhere without the same justification.
+- `src/cli/index.ts` registers commands with a dynamic `import()` inside each `action()` callback, deferring heavy deps (execa, jiti, fast-glob) until a command actually runs — this is what keeps `linkctl --help` fast. It's a sanctioned exception to "prefer top-level imports"; don't add new lazy imports elsewhere without the same justification.
 - A new capability is a new directory under `core/` plus a thin command — not another branch inside an existing module.
 
 ### Core pipeline
 
-The request path most commands follow: `createContext()` → `core/graph` builds the `TaskGraph` (Kahn's algorithm, cycle detection) → `core/execution:runTasksWithDeps()` resolves DAG levels and runs each task (concurrency-limited, or via the event-driven `scheduler.ts` when `useScheduler` is set) → `core/cache` hashes inputs and reads/writes `.link/cache/cache.json`, narrowed by `core/cache/git-diff.ts` to changed packages. `core/plugins` fans out `onDetect`/`onHash`/`onBeforeExecute`/`onAfterExecute` hooks to registered `BuildPlugin`s (framework adapters are wrapped as plugins). `core/scope` and `core/semantic` (ts-morph-based signature/body diffing, symbol graph, blast-radius, test-impact selection) drive change-intelligence features (`link diff`, `pr check`, `link impact`); predictions are logged to `.link/history/impact.jsonl` for shadow-mode validation before test skipping is ever enabled.
+The request path most commands follow: `createContext()` → `core/graph` builds the `TaskGraph` (Kahn's algorithm, cycle detection) → `core/execution:runTasksWithDeps()` resolves DAG levels and runs each task (concurrency-limited, or via the event-driven `scheduler.ts` when `useScheduler` is set) → `core/cache` hashes inputs and reads/writes `.linkctl/cache/cache.json`, narrowed by `core/cache/git-diff.ts` to changed packages. `core/plugins` fans out `onDetect`/`onHash`/`onBeforeExecute`/`onAfterExecute` hooks to registered `BuildPlugin`s (framework adapters are wrapped as plugins). `core/scope` and `core/semantic` (ts-morph-based signature/body diffing, symbol graph, blast-radius, test-impact selection) drive change-intelligence features (`linkctl diff`, `pr check`, `linkctl impact`); predictions are logged to `.linkctl/history/impact.jsonl` for shadow-mode validation before test skipping is ever enabled.
 
 ## Code Style
 

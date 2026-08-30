@@ -52,7 +52,7 @@ export async function hashTaskInputs(
 		await fg(patterns, {
 			cwd,
 			onlyFiles: true,
-			ignore: ["node_modules/**", ".git/**", ".link/**"],
+			ignore: ["node_modules/**", ".git/**", ".linkctl/**"],
 		})
 	).sort();
 

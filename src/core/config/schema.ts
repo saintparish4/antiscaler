@@ -2,7 +2,7 @@ import * as z from "zod";
 
 const defaultCache = {
 	mode: "content" as const,
-	directory: ".link/cache",
+	directory: ".linkctl/cache",
 };
 
 export const taskConfigSchema = z.object({
@@ -19,7 +19,7 @@ export const remoteCacheConfigSchema = z.object({
 	url: z.string().optional(),
 	/** S3 bucket name. */
 	bucket: z.string().optional(),
-	/** Key prefix for S3 objects. Default: `"link/"`. */
+	/** Key prefix for S3 objects. Default: `"linkctl/"`. */
 	prefix: z.string().optional(),
 	/** AWS region or S3-compatible endpoint region. */
 	region: z.string().optional(),
@@ -36,7 +36,7 @@ export const remoteCacheConfigSchema = z.object({
 	maxResponseBytes: z.number().optional(),
 });
 
-export const linkConfigSchema = z
+export const linkctlConfigSchema = z
 	.object({
 		strategy: z.enum(["adaptive", "strict"]).default("adaptive"),
 		cache: z
@@ -46,7 +46,7 @@ export const linkConfigSchema = z
 				/** Optional remote cache backend shared across machines. */
 				remote: remoteCacheConfigSchema.optional(),
 				/**
-				 * Threshold used in `link insight` to estimate the cost of a
+				 * Threshold used in `linkctl insight` to estimate the cost of a
 				 * remote cache miss (milliseconds). When omitted the raw
 				 * `lastDurationMs` of each task is used directly.
 				 */

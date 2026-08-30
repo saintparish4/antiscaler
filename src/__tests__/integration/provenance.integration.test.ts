@@ -28,7 +28,7 @@ function workspaceWithBaseline(): string {
 	const dir = createTempWorkspace("provenance");
 	writeFiles(dir, {
 		"pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n",
-		"link.config.json": JSON.stringify({
+		"linkctl.config.json": JSON.stringify({
 			workspace: { enabled: true, scripts: ["build"] },
 			tasks: {},
 		}),

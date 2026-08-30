@@ -6,7 +6,7 @@ A remote cache lets multiple machines (CI runners, developer laptops) share cach
 
 After every task run:
 
-1. Link checks the remote cache for the task's input hash.
+1. linkctl checks the remote cache for the task's input hash.
 2. On a **remote hit**, the task is skipped and marked `REMOTE HIT` in the insight table.
 3. On a miss, the task runs and the result hash is written to both the local and remote cache.
 
@@ -17,8 +17,8 @@ After every task run:
 Works with any server that handles `GET`, `PUT`, and `HEAD` requests at `{baseUrl}/{hash}`. Compatible with S3 presigned URLs, Cloudflare R2, GCS signed URLs, or a simple Express server.
 
 ```typescript
-// link.config.ts
-import { defineConfig } from "link";
+// linkctl.config.ts
+import { defineConfig } from "linkctl";
 
 export default defineConfig({
   cache: {
@@ -28,7 +28,7 @@ export default defineConfig({
       headers: {
         // Read the token from the environment — never hard-code it. See the
         // security note below.
-        Authorization: `Bearer ${process.env.LINK_CACHE_TOKEN ?? ""}`,
+        Authorization: `Bearer ${process.env.LINKCTL_CACHE_TOKEN ?? ""}`,
       },
       timeout: 15000,
     },
@@ -44,7 +44,7 @@ export default defineConfig({
 | `timeout` | `number` (ms) | `10000` | Per-request timeout |
 | `maxResponseBytes` | `number` | `1048576` (1 MiB) | Caps the GET response body; oversized responses are rejected |
 
-> **Security: never commit secrets to `link.config.ts`.** The config file
+> **Security: never commit secrets to `linkctl.config.ts`.** The config file
 > is checked into source control, so any `Authorization` token, API key, or
 > password written there will leak. Read credentials from environment variables
 > instead (as shown above) and inject them via your CI secret store or a local
@@ -63,9 +63,9 @@ npm install @aws-sdk/client-s3
 cache: {
   remote: {
     type: "s3",
-    bucket: "my-link-cache",
+    bucket: "my-linkctl-cache",
     region: "us-east-1",
-    prefix: "link/",  // optional key prefix
+    prefix: "linkctl/",  // optional key prefix
   },
 },
 ```
@@ -83,13 +83,13 @@ cache: {
 },
 ```
 
-Credentials are resolved via the standard AWS credential chain (environment variables, `~/.aws/credentials`, instance profile). Set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in your environment — there is no `credentials` field in `link.config.ts`.
+Credentials are resolved via the standard AWS credential chain (environment variables, `~/.aws/credentials`, instance profile). Set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in your environment — there is no `credentials` field in `linkctl.config.ts`.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `bucket` | `string` | — | S3 bucket name |
 | `region` | `string` | — | AWS region |
-| `prefix` | `string` | `"link/"` | Key prefix for all objects |
+| `prefix` | `string` | `"linkctl/"` | Key prefix for all objects |
 | `endpoint` | `string` | — | Custom endpoint for R2/MinIO/localstack |
 
 ## TTL eviction
@@ -102,7 +102,7 @@ cache: {
 },
 ```
 
-Eviction runs at the start of every Link run. Entries older than `ttlDays` are deleted before hashing begins.
+Eviction runs at the start of every linkctl run. Entries older than `ttlDays` are deleted before hashing begins.
 
 ## Cost modeling
 
@@ -114,7 +114,7 @@ cache: {
 },
 ```
 
-The `link insight` footer shows:
+The `linkctl insight` footer shows:
 
 ```
 Remote cache hits: 3  Estimated time saved: 135000ms
@@ -127,10 +127,10 @@ Remote cache hits: 3  Estimated time saved: 135000ms
   env:
     AWS_ACCESS_KEY_ID: ${{ secrets.CACHE_AWS_KEY }}
     AWS_SECRET_ACCESS_KEY: ${{ secrets.CACHE_AWS_SECRET }}
-  run: npx link build
+  run: npx linkctl build
 ```
 
-`link.config.ts`:
+`linkctl.config.ts`:
 
 ```typescript
 cache: {
@@ -147,7 +147,7 @@ cache: {
 ## Checking remote hit stats
 
 ```bash
-npx link insight
+npx linkctl insight
 ```
 
 The STATUS column shows `HIT` for both local and remote hits. Remote hits are counted separately in the footer line printed below the table.

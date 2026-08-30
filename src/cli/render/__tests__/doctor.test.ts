@@ -29,11 +29,11 @@ describe("renderDiagnostics", () => {
 		const capture = captureOutput();
 
 		renderDiagnostics(
-			[{ level: "error", label: "broken", detail: "Run `link init`." }],
+			[{ level: "error", label: "broken", detail: "Run `linkctl init`." }],
 			capture.printer,
 		);
 
-		expect(capture.stdout()).toContain("      → Run `link init`.");
+		expect(capture.stdout()).toContain("      → Run `linkctl init`.");
 	});
 
 	it("omits the detail line when there is nothing to add", () => {

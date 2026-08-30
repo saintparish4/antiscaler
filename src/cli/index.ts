@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command, Option } from "commander";
-import { LinkError } from "../core/errors.js";
+import { LinkctlError } from "../core/errors.js";
 import type { ConcurrencyOpts } from "./parse-opts.js";
 import { parseConcurrency } from "./parse-opts.js";
 import { renderError, renderUnexpectedError } from "./render/error.js";
@@ -28,7 +28,7 @@ type GlobalVisualOptions = {
 const countFlag = (_value: string, previous: number) => previous + 1;
 
 const program = new Command()
-	.name("link")
+	.name("linkctl")
 	.description("Adaptive dev orchestration CLI")
 	.version(_pkg.version)
 	.option(
@@ -93,7 +93,7 @@ program
 
 const traceCmd = program
 	.command("trace")
-	.description("Run dev with tracing enabled (writes .link/traces/)")
+	.description("Run dev with tracing enabled (writes .linkctl/traces/)")
 	.action(async () => {
 		const { registerTraceAction } = await import("./commands/trace.js");
 		await registerTraceAction();
@@ -147,7 +147,7 @@ program
 
 program
 	.command("init")
-	.description("Scaffold link.config.ts in the current directory")
+	.description("Scaffold linkctl.config.ts in the current directory")
 	.action(async () => {
 		const { registerInitAction } = await import("./commands/init.js");
 		await registerInitAction();
@@ -278,11 +278,11 @@ prCmd
 		},
 	);
 
-// The only place the process exits on error: typed LinkErrors are the
+// The only place the process exits on error: typed LinkctlErrors are the
 // expected failure mode (exit 1); anything else escaped a typed path and is a
 // bug worth a distinct exit code (exit 2).
 program.parseAsync(process.argv).catch((err: unknown) => {
-	if (err instanceof LinkError) {
+	if (err instanceof LinkctlError) {
 		renderError(err);
 		process.exit(1);
 	}

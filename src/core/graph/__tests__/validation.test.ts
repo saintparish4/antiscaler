@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { ResolvedLinkConfig, TaskGraph } from "../../../types/index.js";
+import type { ResolvedLinkctlConfig, TaskGraph } from "../../../types/index.js";
 import { ConfigError, CycleError } from "../../errors.js";
 import { buildGraph } from "../planner.js";
 import { validateTaskGraph } from "../validation.js";
 
-type Tasks = ResolvedLinkConfig["tasks"];
+type Tasks = ResolvedLinkctlConfig["tasks"];
 
 function graphFor(tasks: Tasks): TaskGraph {
 	return buildGraph({
 		strategy: "adaptive",
-		cache: { mode: "content", directory: ".link/cache" },
+		cache: { mode: "content", directory: ".linkctl/cache" },
 		tasks,
 	});
 }

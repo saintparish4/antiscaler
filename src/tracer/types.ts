@@ -1,7 +1,7 @@
 /**
  * @module
- * Public types for the link runtime tracer. Consumed by user webpack /
- *  vite configs and by `link build --scope=<session>` on the CLI side
+ * Public types for the linkctl runtime tracer. Consumed by user webpack /
+ *  vite configs and by `linkctl build --scope=<session>` on the CLI side
  */
 
 export interface TraceModule {
@@ -24,7 +24,7 @@ export interface TraceFile {
 }
 
 export interface TracerOptions {
-	/** Output directory. Defaults to `.link/traces`. */
+	/** Output directory. Defaults to `.linkctl/traces`. */
 	outDir?: string;
 	/** Pre-set sessionId; otherwise generated. */
 	sessionId?: string;

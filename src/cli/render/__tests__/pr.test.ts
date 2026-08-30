@@ -109,7 +109,7 @@ describe("renderPrReplay", () => {
 		renderPrReplay(null, capture.printer);
 
 		expect(capture.stdout()).toContain("No trace session found");
-		expect(capture.stdout()).toContain("link trace");
+		expect(capture.stdout()).toContain("linkctl trace");
 	});
 
 	it("prints the session header", () => {

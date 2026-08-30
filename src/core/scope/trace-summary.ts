@@ -1,6 +1,6 @@
 /**
  * @module
- * Reduces a recorded trace session to the numbers `link trace analyze`
+ * Reduces a recorded trace session to the numbers `linkctl trace analyze`
  * reports. Pure given a loaded trace and package graph — the reading happens
  * in `trace-loader`, the rendering in `cli/render`.
  */

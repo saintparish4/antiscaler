@@ -1,7 +1,7 @@
 import type * as z from "zod";
 import type { RemoteCacheAdapter } from "../core/cache/remote-adapter.js";
 import type {
-	linkConfigSchema,
+	linkctlConfigSchema,
 	taskConfigSchema,
 } from "../core/config/schema.js";
 import type { PluginRegistry } from "../core/plugins/registry.js";
@@ -10,16 +10,16 @@ import type { TaskProvenance } from "./provenance.js";
 export type { RunReason, TaskProvenance } from "./provenance.js";
 
 /** The object a user passes to `defineConfig`: every field optional. */
-export type LinkConfig = z.input<typeof linkConfigSchema>;
+export type LinkctlConfig = z.input<typeof linkctlConfigSchema>;
 
 /** The same config after validation, with every default filled in. */
-export type ResolvedLinkConfig = z.output<typeof linkConfigSchema>;
+export type ResolvedLinkctlConfig = z.output<typeof linkctlConfigSchema>;
 
-export type Strategy = ResolvedLinkConfig["strategy"];
+export type Strategy = ResolvedLinkctlConfig["strategy"];
 
 export type TaskConfig = z.infer<typeof taskConfigSchema>;
 
-export type CacheConfig = ResolvedLinkConfig["cache"];
+export type CacheConfig = ResolvedLinkctlConfig["cache"];
 
 /** Implemented by `core/graph`; consumers depend on this, not the class. */
 export interface TaskGraph {
@@ -35,9 +35,9 @@ export interface RuntimeInfo {
 	fallback: string;
 }
 
-export interface LinkContext {
+export interface LinkctlContext {
 	cwd: string;
-	config: ResolvedLinkConfig;
+	config: ResolvedLinkctlConfig;
 	pm: string;
 	runtime: RuntimeInfo;
 	framework: string | null;

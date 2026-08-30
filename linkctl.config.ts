@@ -30,7 +30,7 @@ export default defineConfig({
 		echoQuoted: {
 			command: `node -e "console.log('link ok')"`,
 			// Content cache: second `run echoQuoted` with unchanged config → HIT.
-			inputs: ["link.config.ts"],
+			inputs: ["linkctl.config.ts"],
 		},
 		typecheck: {
 			command: "npm run typecheck",

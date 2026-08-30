@@ -21,6 +21,6 @@ export const reportPluginError: PluginErrorHook = (
 	const detail = err instanceof Error ? err.message : String(err);
 	errorLines(
 		getPrinter(),
-		`${colors.yellow("[link plugin]")} ${where} threw: ${detail}`,
+		`${colors.yellow("[linkctl plugin]")} ${where} threw: ${detail}`,
 	);
 };

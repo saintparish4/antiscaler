@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { registerBuildAction } from "../../cli/commands/build.js";
 import { registerDevAction } from "../../cli/commands/dev.js";
 import { registerRunAction } from "../../cli/commands/run.js";
-import { LinkError } from "../../core/errors.js";
+import { LinkctlError } from "../../core/errors.js";
 import {
 	captureGlobalOutput,
 	cleanupTempWorkspaces,
@@ -23,9 +23,9 @@ import {
 
 function writeConfig(dir: string, config: Record<string, unknown>): void {
 	writeFileSync(
-		path.join(dir, "link.config.json"),
+		path.join(dir, "linkctl.config.json"),
 		JSON.stringify({
-			cache: { directory: path.join(dir, ".link/cache") },
+			cache: { directory: path.join(dir, ".linkctl/cache") },
 			...config,
 		}),
 	);
@@ -47,14 +47,14 @@ describe("build command", () => {
 		expect(output.stdout()).toContain("build");
 	});
 
-	it("fails with an LinkError when no build task is configured", async () => {
+	it("fails with an LinkctlError when no build task is configured", async () => {
 		const dir = createTempWorkspace("build");
 		writeConfig(dir, { tasks: { lint: { command: "echo lint-ok" } } });
 		captureGlobalOutput();
 
 		await expect(
 			withCwd(dir, () => registerBuildAction()),
-		).rejects.toBeInstanceOf(LinkError);
+		).rejects.toBeInstanceOf(LinkctlError);
 	});
 
 	it("prints the task plan without executing under --dry-run", async () => {
@@ -77,7 +77,7 @@ describe("build command", () => {
 	it("accepts --scope when the named trace session exists", async () => {
 		const dir = createTempWorkspace("build");
 		writeConfig(dir, { tasks: { build: { command: "echo scoped" } } });
-		const traceDir = path.join(dir, ".link", "traces");
+		const traceDir = path.join(dir, ".linkctl", "traces");
 		mkdirSync(traceDir, { recursive: true });
 		writeFileSync(
 			path.join(traceDir, "scope-sess.json"),
@@ -191,13 +191,13 @@ describe("dev command", () => {
 		).resolves.toBeUndefined();
 	});
 
-	it("fails with an LinkError when no dev task is configured", async () => {
+	it("fails with an LinkctlError when no dev task is configured", async () => {
 		const dir = createTempWorkspace("dev");
 		writeConfig(dir, { tasks: { build: { command: "echo build-ok" } } });
 
 		await expect(
 			withCwd(dir, () => registerDevAction()),
-		).rejects.toBeInstanceOf(LinkError);
+		).rejects.toBeInstanceOf(LinkctlError);
 	});
 });
 
@@ -212,13 +212,13 @@ describe("run command", () => {
 		expect(output.stdout()).toContain("lint");
 	});
 
-	it("fails with an LinkError for a task outside the graph", async () => {
+	it("fails with an LinkctlError for a task outside the graph", async () => {
 		const dir = createTempWorkspace("run");
 		writeConfig(dir, { tasks: { lint: { command: "echo lint-ok" } } });
 
 		await expect(
 			withCwd(dir, () => registerRunAction("nonexistent")),
-		).rejects.toBeInstanceOf(LinkError);
+		).rejects.toBeInstanceOf(LinkctlError);
 	});
 
 	it("accepts an explicit concurrency limit", async () => {

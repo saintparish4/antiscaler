@@ -1,5 +1,5 @@
 {
-  "name": "link",
+  "name": "linkctl",
   "version": "1.1.1",
   "description": "Adaptive dev orchestration CLI — task DAG, content caching, runtime detection",
   "type": "module",
@@ -16,7 +16,7 @@
     }
   },
   "bin": {
-    "link": "dist/cli.js"
+    "linkctl": "dist/cli.js"
   },
   "files": [
     "dist"
