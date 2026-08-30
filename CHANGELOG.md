@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Input hashing** — files are hashed individually and their digests combined
   in path order, so peak memory is one file per worker rather than the total
   size of a task's inputs.
+- **Startup** — `link env` dropped from ~193 ms to ~119 ms. `env`, `check` and
+  `insight` no longer compute git scoping they never read, and fast-glob and
+  execa are now loaded on demand instead of on the static import path of every
+  command.
+- **Runtime adapters** — the Node adapter answers from `process.version`
+  instead of spawning a second Node to ask, and the Bun/Deno probes run once
+  per process and share one spawn between `available()` and `version()`.
+  Probing for absent binaries was the expensive case.
 
 ### Changed
 
@@ -33,6 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Coverage is no longer enabled for every `vitest` invocation — it is opt-in
   via `--coverage` (`pnpm test:all` and the CI coverage job), so single-file
   runs no longer fail global thresholds.
+
+### Fixed
+
+- **`cache.json` is written atomically.** It went to a temp file that is then
+  renamed over the target, so an interrupted run leaves the previous cache
+  intact instead of truncated JSON that could only be recovered by deleting
+  `.link/cache/`. `writeCacheSync`, the process-exit safety net, needed this
+  most. The file is also no longer pretty-printed.
 
 ### Removed
 

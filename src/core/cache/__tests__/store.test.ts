@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -93,5 +101,67 @@ describe("writeCacheSync", () => {
 		const dir = path.join(makeTmpDir(), "a", "b", "c");
 		writeCacheSync(dir, { tasks: {} });
 		expect(await readCache(dir)).toEqual({ tasks: {} });
+	});
+});
+
+describe("atomic cache writes", () => {
+	/**
+	 * The failure this replaced: a crash between `open(O_TRUNC)` and the last
+	 * byte left `cache.json` truncated, and `readCache` could only report it as
+	 * corrupt — recoverable by hand-deleting the cache directory.
+	 *
+	 * Skipped where the permission bits cannot be trusted to deny the write:
+	 * Windows ignores them, and root ignores them everywhere.
+	 */
+	const canDenyWrites =
+		process.platform !== "win32" &&
+		(typeof process.getuid !== "function" || process.getuid() !== 0);
+
+	it.skipIf(!canDenyWrites)(
+		"test_atomic_write_preserves_previous_cache",
+		async () => {
+			const cacheDir = path.join(makeTmpDir(), "cache");
+			await writeCache(cacheDir, { tasks: { a: { lastRun: 1 } } });
+
+			chmodSync(cacheDir, 0o500);
+			try {
+				await expect(
+					writeCache(cacheDir, { tasks: { a: { lastRun: 2 } } }),
+				).rejects.toThrow(CacheError);
+				expect(await readCache(cacheDir)).toEqual({
+					tasks: { a: { lastRun: 1 } },
+				});
+			} finally {
+				chmodSync(cacheDir, 0o700);
+			}
+		},
+	);
+
+	it("test_no_temp_files_left_behind: a successful write leaves only cache.json", async () => {
+		const dir = makeTmpDir();
+		await writeCache(dir, { tasks: { a: { lastRun: 1 } } });
+		writeCacheSync(dir, { tasks: { a: { lastRun: 2 } } });
+
+		expect(readdirSync(dir)).toEqual(["cache.json"]);
+		expect(await readCache(dir)).toEqual({ tasks: { a: { lastRun: 2 } } });
+	});
+
+	it("reports an unwritable location as a CacheError", async () => {
+		const dir = makeTmpDir();
+		const notADirectory = path.join(dir, "occupied");
+		writeFileSync(notADirectory, "x");
+
+		await expect(writeCache(notADirectory, { tasks: {} })).rejects.toThrow(
+			CacheError,
+		);
+	});
+
+	it("writes compact JSON, not an indented document", async () => {
+		const dir = makeTmpDir();
+		await writeCache(dir, { tasks: { a: { lastRun: 1 } } });
+
+		expect(readFileSync(path.join(dir, "cache.json"), "utf8")).toBe(
+			'{"tasks":{"a":{"lastRun":1}}}',
+		);
 	});
 });
