@@ -40,5 +40,4 @@ Warm-run caches are primed with two untimed runs before measurement. The cold sc
 
 ## Other files
 
-- `smoke.ps1` — correctness smoke test for the CLI (no timing).
-- `Smoke-Test.txt`, `Audit-Checklist.txt` — recorded outputs from manual passes.
+- `Audit-Checklist.txt` — recorded output from a manual audit pass.

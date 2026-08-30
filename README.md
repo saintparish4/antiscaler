@@ -1,14 +1,7 @@
-<div align="center">
-  <a href="https://github.com/saintparish4/link">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="assets/linkctl-wordmark-dark.png">
-      <img src="assets/linkctl-wordmark.png" width="500" height="auto" alt="linkctl"/>
-    </picture>
-  </a>
-</div>
+# linkctl
 
 [![npm version](https://img.shields.io/npm/v/linkctl.svg)](https://www.npmjs.com/package/linkctl)
-[![CI](https://github.com/saintparish4/link/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/link/actions/workflows/ci.yml)
+[![CI](https://github.com/saintparish4/linkctl/actions/workflows/ci.yml/badge.svg)](https://github.com/saintparish4/linkctl/actions/workflows/ci.yml)
 
 A build orchestrator that skips work you haven't changed — a task DAG, content-based caching, and workspace scoping, driven by `linkctl.config.ts`.
 
@@ -34,7 +27,7 @@ Optional, only if you touch the matching area:
 ## Installation
 
 ```bash
-git clone https://github.com/saintparish4/link.git
+git clone https://github.com/saintparish4/linkctl.git
 cd linkctl
 pnpm install
 pnpm build               # required before the CLI or E2E tests can run
