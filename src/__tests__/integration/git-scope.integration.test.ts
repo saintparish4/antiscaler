@@ -12,6 +12,7 @@ import {
 	listChangedFiles,
 	listChangedFilesSinceMergeBase,
 	readFileAtRef,
+	readFilesAtRef,
 } from "../../core/vcs/git.js";
 import {
 	cleanupTempWorkspaces,
@@ -69,6 +70,90 @@ describe("readFileAtRef", () => {
 	it("returns null outside a git repository instead of throwing", async () => {
 		const dir = createTempWorkspace("git");
 		expect(await readFileAtRef(dir, "HEAD", "anything.ts")).toBeNull();
+	});
+});
+
+describe("readFilesAtRef", () => {
+	it("returns the same contents as the per-file reader", async () => {
+		const dir = repoWithBaseline();
+		writeFiles(dir, {
+			"packages/utils/src/index.ts": "export const value = 2;\n",
+		});
+		const paths = ["packages/utils/src/index.ts", "packages/docs/src/index.ts"];
+
+		const batch = await readFilesAtRef(dir, "HEAD", paths);
+
+		expect(batch).not.toBeNull();
+		for (const relPath of paths) {
+			expect(batch?.get(relPath)).toBe(
+				await readFileAtRef(dir, "HEAD", relPath),
+			);
+		}
+	});
+
+	it("maps a path missing at the ref to null", async () => {
+		const dir = repoWithBaseline();
+		const batch = await readFilesAtRef(dir, "HEAD", [
+			"packages/utils/src/index.ts",
+			"packages/utils/src/added-later.ts",
+		]);
+
+		expect(batch?.get("packages/utils/src/index.ts")).toBe(
+			"export const value = 1;",
+		);
+		expect(batch?.get("packages/utils/src/added-later.ts")).toBeNull();
+	});
+
+	it("stays aligned across a batch larger than one chunk", async () => {
+		const dir = createTempWorkspace("git");
+		const files: Record<string, string> = {
+			"package.json": JSON.stringify({ name: "many" }),
+		};
+		for (let i = 0; i < 300; i++) {
+			files[`src/m${i}.ts`] = `export const v${i} = ${i};\n`;
+		}
+		writeFiles(dir, files);
+		git(dir, "init");
+		commitAll(dir, "many files");
+		const paths = Array.from({ length: 300 }, (_, i) => `src/m${i}.ts`);
+
+		const batch = await readFilesAtRef(dir, "HEAD", paths);
+
+		expect(batch?.size).toBe(300);
+		for (let i = 0; i < 300; i++) {
+			expect(batch?.get(`src/m${i}.ts`)).toBe(`export const v${i} = ${i};`);
+		}
+	});
+
+	it("preserves multi-byte content", async () => {
+		const dir = createTempWorkspace("git");
+		writeFiles(dir, {
+			"package.json": JSON.stringify({ name: "utf8" }),
+			"src/a.ts": 'export const emoji = "🚀 — ünïcode";\n',
+			"src/b.ts": "export const plain = 1;\n",
+		});
+		git(dir, "init");
+		commitAll(dir, "utf8");
+
+		const batch = await readFilesAtRef(dir, "HEAD", ["src/a.ts", "src/b.ts"]);
+
+		expect(batch?.get("src/a.ts")).toBe('export const emoji = "🚀 — ünïcode";');
+		expect(batch?.get("src/b.ts")).toBe("export const plain = 1;");
+	});
+
+	it("returns an empty map for no requests without spawning git", async () => {
+		const dir = createTempWorkspace("git");
+		expect(await readFilesAtRef(dir, "HEAD", [])).toEqual(new Map());
+	});
+
+	it("returns null outside a git repository so the caller can fall back", async () => {
+		const dir = createTempWorkspace("git");
+		expect(await readFilesAtRef(dir, "HEAD", ["anything.ts"])).toBeNull();
+	});
+
+	it("refuses a batch containing a newline in a path", async () => {
+		const dir = repoWithBaseline();
+		expect(await readFilesAtRef(dir, "HEAD", ["a\nb.ts"])).toBeNull();
 	});
 });
 

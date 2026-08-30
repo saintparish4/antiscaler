@@ -25,13 +25,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { TaskConfig } from "../../types/index.js";
 import { getChangedFiles } from "../cache/git-diff.js";
+import { mapLimit } from "../execution/concurrency.js";
 import type { ImportGraph } from "../graph/import-graph.js";
 import {
 	buildImportGraph,
 	computeAffectedFiles,
 } from "../graph/import-graph.js";
 import type { PackageGraph } from "../graph/package-graph.js";
-import { readFileAtRef } from "../vcs/git.js";
+import { readFileAtRef, readFilesAtRef } from "../vcs/git.js";
 import type { ClassifyResult, SemanticClass } from "./differ.js";
 import { createClassifier } from "./differ.js";
 import { updateSymbolGraph } from "./symbol-graph.js";
@@ -66,6 +67,31 @@ export interface BlastRadius {
 }
 
 const TS_FILE = /\.(?:ts|tsx|mts|cts)$/;
+
+/**
+ * Classification is CPU-bound in ts-morph, so this is not about parallel
+ * parsing — it is about overlapping each file's working-tree read with the
+ * previous file's parse.
+ */
+const CLASSIFY_CONCURRENCY = 16;
+
+function isAnalyzable(file: string): boolean {
+	return TS_FILE.test(file) && !file.endsWith(".d.ts");
+}
+
+/**
+ * A `readBefore` backed by one batched `git cat-file`, falling back to a
+ * `git show` per file if the batch is unavailable or unparseable.
+ */
+async function batchedReaderFor(
+	cwd: string,
+	baseRef: string,
+	relPaths: string[],
+): Promise<(relPath: string) => Promise<string | null>> {
+	const batch = await readFilesAtRef(cwd, baseRef, relPaths);
+	if (batch === null) return (rel) => readFileAtRef(cwd, baseRef, rel);
+	return async (rel) => batch.get(rel) ?? null;
+}
 
 export interface TraceBlastRadiusOptions {
 	/** Git ref to diff against. Defaults to HEAD~1 (matches `diff`/git-diff). */
@@ -112,8 +138,11 @@ export async function traceBlastRadius(
 		importGraph = buildImportGraph(symbolGraph, { packageDirs });
 	}
 
+	const files = changedFiles.map(toPosix).sort();
+	const analyzable = files.filter(isAnalyzable);
+
 	const readBefore =
-		options.readBefore ?? ((rel: string) => readFileAtRef(cwd, baseRef, rel));
+		options.readBefore ?? (await batchedReaderFor(cwd, baseRef, analyzable));
 	const readAfter =
 		options.readAfter ??
 		(async (rel: string) => {
@@ -128,29 +157,30 @@ export async function traceBlastRadius(
 	// Project rather than building one per changed file.
 	const classify = createClassifier();
 
-	const changed: FileImpact[] = [];
-	for (const file of changedFiles.map(toPosix).sort()) {
-		if (!TS_FILE.test(file) || file.endsWith(".d.ts")) {
-			changed.push({
+	// Per-file work is independent, so it overlaps; mapLimit preserves input
+	// order, which keeps the report deterministic.
+	const changed = await mapLimit(files, CLASSIFY_CONCURRENCY, async (file) => {
+		if (!isAnalyzable(file)) {
+			return {
 				filePath: file,
-				classification: "unanalyzed",
+				classification: "unanalyzed" as const,
 				impactedSymbols: [],
 				propagates: false,
 				notes: [`${file}: not a TypeScript source; change not analyzed`],
-			});
-			continue;
+			};
 		}
 		const [before, after] = await Promise.all([
 			readBefore(file),
 			readAfter(file),
 		]);
-		const result = await classify({
-			filePath: file,
-			before: before ?? "",
-			after: after ?? "",
-		});
-		changed.push(toFileImpact(result));
-	}
+		return toFileImpact(
+			await classify({
+				filePath: file,
+				before: before ?? "",
+				after: after ?? "",
+			}),
+		);
+	});
 
 	return assembleBlastRadius(baseRef, changed, importGraph, {
 		packageDirs,
